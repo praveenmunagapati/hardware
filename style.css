@@ -74,7 +74,7 @@
     --transition-med:  300ms var(--ease-out);
 
     /* Layout */
-    --content-max-width: 1100px;
+    --content-max-width: 100%;
     --header-height: 52px;
 }
 
@@ -330,10 +330,10 @@ select:focus { border-color: var(--accent-amber); }
 
 .pipeline {
     flex: 1;
-    padding: var(--space-3xl) var(--space-xl);
+    padding: var(--space-xl);
     padding-bottom: 120px;
-    max-width: var(--content-max-width);
-    margin: 0 auto;
+    max-width: 100%;
+    margin: 0;
     width: 100%;
 }
 
@@ -411,7 +411,6 @@ select:focus { border-color: var(--accent-amber); }
     font-size: 12px;
     color: var(--text-muted);
     line-height: 1.5;
-    max-width: 700px;
 }
 
 .stage-desc code {
