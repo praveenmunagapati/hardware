@@ -13,7 +13,7 @@
 <body>
     <div id="app">
         <!-- ═══════════════════════════════════════════════════════════
-             Header / Toolbar
+             Sticky Header / Toolbar
              ═══════════════════════════════════════════════════════════ -->
         <header class="header">
             <div class="brand">
@@ -60,162 +60,273 @@
         </header>
 
         <!-- ═══════════════════════════════════════════════════════════
-             Main Content — 2×2 Grid
+             Pipeline Flow — Vertical Infographic
              ═══════════════════════════════════════════════════════════ -->
-        <div class="main-content">
-            <!-- Source Code Editor -->
-            <div class="panel editor-panel">
-                <div class="panel-header">
-                    <div class="panel-dot dot-amber"></div>
-                    <span class="panel-title">Source Code</span>
+        <main class="pipeline">
+
+            <!-- ── Stage 1: Source Code ─────────────────────────────── -->
+            <section class="stage" id="stage-source">
+                <div class="stage-header">
+                    <div class="stage-number">01</div>
+                    <div class="stage-info">
+                        <h2 class="stage-title">Source Code</h2>
+                        <p class="stage-desc">Write your program in a minimal C-like language. Supports variables, arithmetic, conditionals, loops, and print.</p>
+                    </div>
+                    <div class="stage-dot dot-amber"></div>
                 </div>
-                <div class="panel-body">
-                    <textarea id="source-editor" 
-                              spellcheck="false" 
+                <div class="stage-body">
+                    <textarea id="source-editor"
+                              spellcheck="false"
                               autocomplete="off"
-                              placeholder="Write code here..."></textarea>
+                              placeholder="Write code here..."
+                              rows="14"></textarea>
                 </div>
+            </section>
+
+            <div class="pipeline-connector">
+                <div class="connector-line"></div>
+                <div class="connector-label">Lexical Analysis</div>
+                <div class="connector-arrow">▼</div>
             </div>
 
-            <!-- Tokens -->
-            <div class="panel token-panel">
-                <div class="panel-header">
-                    <div class="panel-dot dot-magenta"></div>
-                    <span class="panel-title">Tokens</span>
+            <!-- ── Stage 2: Tokens ─────────────────────────────────── -->
+            <section class="stage" id="stage-tokens">
+                <div class="stage-header">
+                    <div class="stage-number">02</div>
+                    <div class="stage-info">
+                        <h2 class="stage-title">Tokens</h2>
+                        <p class="stage-desc">The lexer scans characters and groups them into meaningful tokens — keywords, identifiers, operators, numbers, and delimiters.</p>
+                    </div>
+                    <div class="stage-dot dot-magenta"></div>
                 </div>
-                <div class="panel-body" id="token-output"></div>
+                <div class="stage-body">
+                    <div id="token-output" class="token-flow"></div>
+                </div>
+            </section>
+
+            <div class="pipeline-connector">
+                <div class="connector-line"></div>
+                <div class="connector-label">Parsing</div>
+                <div class="connector-arrow">▼</div>
             </div>
 
-            <!-- AST -->
-            <div class="panel ast-panel">
-                <div class="panel-header">
-                    <div class="panel-dot dot-cyan"></div>
-                    <span class="panel-title">Abstract Syntax Tree</span>
+            <!-- ── Stage 3: Abstract Syntax Tree ───────────────────── -->
+            <section class="stage" id="stage-ast">
+                <div class="stage-header">
+                    <div class="stage-number">03</div>
+                    <div class="stage-info">
+                        <h2 class="stage-title">Abstract Syntax Tree</h2>
+                        <p class="stage-desc">The parser builds a hierarchical tree from the flat token stream, capturing the program's structure and meaning.</p>
+                    </div>
+                    <div class="stage-dot dot-cyan"></div>
                 </div>
-                <div class="panel-body" id="ast-output"></div>
+                <div class="stage-body">
+                    <div id="ast-output" class="ast-tree"></div>
+                </div>
+            </section>
+
+            <div class="pipeline-connector">
+                <div class="connector-line"></div>
+                <div class="connector-label">Code Generation</div>
+                <div class="connector-arrow">▼</div>
             </div>
 
-            <!-- Assembly -->
-            <div class="panel asm-panel">
-                <div class="panel-header">
-                    <div class="panel-dot dot-green"></div>
-                    <span class="panel-title">Assembly</span>
+            <!-- ── Stage 4: Assembly ───────────────────────────────── -->
+            <section class="stage" id="stage-asm">
+                <div class="stage-header">
+                    <div class="stage-number">04</div>
+                    <div class="stage-info">
+                        <h2 class="stage-title">Assembly</h2>
+                        <p class="stage-desc">The code generator walks the AST and emits low-level assembly instructions — one step away from machine code.</p>
+                    </div>
+                    <div class="stage-dot dot-green"></div>
                 </div>
-                <div class="panel-body" id="asm-output"></div>
-            </div>
-        </div>
+                <div class="stage-body">
+                    <div id="asm-output" class="asm-listing"></div>
+                </div>
+            </section>
 
-        <!-- ═══════════════════════════════════════════════════════════
-             CPU Panel — Registers, Flags, Cycle Counter
-             ═══════════════════════════════════════════════════════════ -->
-        <div class="panel cpu-panel">
-            <div class="panel-header">
-                <div class="panel-dot dot-blue"></div>
-                <span class="panel-title">CPU State</span>
+            <div class="pipeline-connector">
+                <div class="connector-line"></div>
+                <div class="connector-label">Assembly → Machine Code</div>
+                <div class="connector-arrow">▼</div>
             </div>
-            <div class="cpu-layout">
-                <!-- General Registers -->
-                <div class="cpu-section">
-                    <div class="cpu-section-title">Registers</div>
-                    <div class="register-group">
-                        <div class="register">
-                            <span class="reg-name">R0</span>
-                            <span class="reg-value" id="reg-r0">00</span>
+
+            <!-- ── Stage 5: Bytecode ───────────────────────────────── -->
+            <section class="stage" id="stage-bytecode">
+                <div class="stage-header">
+                    <div class="stage-number">05</div>
+                    <div class="stage-info">
+                        <h2 class="stage-title">Machine Code</h2>
+                        <p class="stage-desc">The assembler resolves labels and encodes each instruction into raw bytes — the only thing the CPU understands.</p>
+                    </div>
+                    <div class="stage-dot dot-purple"></div>
+                </div>
+                <div class="stage-body">
+                    <div id="bytecode-output" class="bytecode-view"></div>
+                </div>
+            </section>
+
+            <div class="pipeline-connector connector-execution">
+                <div class="connector-line"></div>
+                <div class="connector-label">Loaded into Memory → CPU Executes</div>
+                <div class="connector-arrow">▼</div>
+            </div>
+
+            <!-- ── Stage 6: CPU State ──────────────────────────────── -->
+            <section class="stage" id="stage-cpu">
+                <div class="stage-header">
+                    <div class="stage-number">06</div>
+                    <div class="stage-info">
+                        <h2 class="stage-title">CPU State</h2>
+                        <p class="stage-desc">The processor's registers, flags, and program counter. Watch values change as each instruction executes.</p>
+                    </div>
+                    <div class="stage-dot dot-blue"></div>
+                </div>
+                <div class="stage-body">
+                    <div class="cpu-layout">
+                        <!-- General Registers -->
+                        <div class="cpu-section">
+                            <div class="cpu-section-title">General Purpose Registers</div>
+                            <div class="register-group">
+                                <div class="register">
+                                    <span class="reg-name">R0</span>
+                                    <span class="reg-value" id="reg-r0">00</span>
+                                </div>
+                                <div class="register">
+                                    <span class="reg-name">R1</span>
+                                    <span class="reg-value" id="reg-r1">00</span>
+                                </div>
+                                <div class="register">
+                                    <span class="reg-name">R2</span>
+                                    <span class="reg-value" id="reg-r2">00</span>
+                                </div>
+                                <div class="register">
+                                    <span class="reg-name">R3</span>
+                                    <span class="reg-value" id="reg-r3">00</span>
+                                </div>
+                            </div>
                         </div>
-                        <div class="register">
-                            <span class="reg-name">R1</span>
-                            <span class="reg-value" id="reg-r1">00</span>
+
+                        <!-- Special Registers -->
+                        <div class="cpu-section">
+                            <div class="cpu-section-title">Pointers</div>
+                            <div class="register-group">
+                                <div class="register reg-pc">
+                                    <span class="reg-name">PC</span>
+                                    <span class="reg-value" id="reg-pc">00</span>
+                                </div>
+                                <div class="register reg-sp">
+                                    <span class="reg-name">SP</span>
+                                    <span class="reg-value" id="reg-sp">FF</span>
+                                </div>
+                            </div>
                         </div>
-                        <div class="register">
-                            <span class="reg-name">R2</span>
-                            <span class="reg-value" id="reg-r2">00</span>
+
+                        <!-- Flags -->
+                        <div class="cpu-section">
+                            <div class="cpu-section-title">Status Flags</div>
+                            <div class="flag-group">
+                                <div class="flag">
+                                    <span class="flag-name">Z</span>
+                                    <span class="flag-value" id="flag-z">0</span>
+                                    <span class="flag-label">Zero</span>
+                                </div>
+                                <div class="flag">
+                                    <span class="flag-name">N</span>
+                                    <span class="flag-value" id="flag-n">0</span>
+                                    <span class="flag-label">Negative</span>
+                                </div>
+                                <div class="flag">
+                                    <span class="flag-name">C</span>
+                                    <span class="flag-value" id="flag-c">0</span>
+                                    <span class="flag-label">Carry</span>
+                                </div>
+                                <div class="flag">
+                                    <span class="flag-name">V</span>
+                                    <span class="flag-value" id="flag-v">0</span>
+                                    <span class="flag-label">Overflow</span>
+                                </div>
+                            </div>
                         </div>
-                        <div class="register">
-                            <span class="reg-name">R3</span>
-                            <span class="reg-value" id="reg-r3">00</span>
+
+                        <!-- Cycle Counter -->
+                        <div class="cpu-section">
+                            <div class="cpu-section-title">Clock Cycles</div>
+                            <div class="cycle-display">
+                                <span class="cycle-value" id="cycle-count">0</span>
+                            </div>
                         </div>
                     </div>
                 </div>
+            </section>
 
-                <!-- Special Registers -->
-                <div class="cpu-section">
-                    <div class="cpu-section-title">Pointers</div>
-                    <div class="register-group">
-                        <div class="register reg-pc">
-                            <span class="reg-name">PC</span>
-                            <span class="reg-value" id="reg-pc">00</span>
-                        </div>
-                        <div class="register reg-sp">
-                            <span class="reg-name">SP</span>
-                            <span class="reg-value" id="reg-sp">FF</span>
-                        </div>
+            <div class="pipeline-connector">
+                <div class="connector-line"></div>
+                <div class="connector-arrow">▼</div>
+            </div>
+
+            <!-- ── Stage 7: Memory ─────────────────────────────────── -->
+            <section class="stage" id="stage-memory">
+                <div class="stage-header">
+                    <div class="stage-number">07</div>
+                    <div class="stage-info">
+                        <h2 class="stage-title">Memory</h2>
+                        <p class="stage-desc">256 bytes of addressable memory. Code lives at the top, variables in the data segment, and the stack grows downward from 0xFF.</p>
                     </div>
+                    <div class="stage-dot dot-purple"></div>
                 </div>
-
-                <!-- Flags -->
-                <div class="cpu-section">
-                    <div class="cpu-section-title">Flags</div>
-                    <div class="flag-group">
-                        <div class="flag">
-                            <span class="flag-name">Z</span>
-                            <span class="flag-value" id="flag-z">0</span>
-                        </div>
-                        <div class="flag">
-                            <span class="flag-name">N</span>
-                            <span class="flag-value" id="flag-n">0</span>
-                        </div>
-                        <div class="flag">
-                            <span class="flag-name">C</span>
-                            <span class="flag-value" id="flag-c">0</span>
-                        </div>
-                        <div class="flag">
-                            <span class="flag-name">V</span>
-                            <span class="flag-value" id="flag-v">0</span>
-                        </div>
+                <div class="stage-body">
+                    <div class="memory-legend">
+                        <span class="legend-item"><span class="legend-swatch legend-code"></span> Code (0x00–0xBF)</span>
+                        <span class="legend-item"><span class="legend-swatch legend-data"></span> Data (0xC0–0xEF)</span>
+                        <span class="legend-item"><span class="legend-swatch legend-stack"></span> Stack (0xF0–0xFF)</span>
                     </div>
+                    <div id="memory-grid" class="memory-grid-container"></div>
                 </div>
+            </section>
 
-                <!-- Cycle Counter -->
-                <div class="cpu-section">
-                    <div class="cpu-section-title">Cycles</div>
-                    <div class="cycle-display">
-                        <span class="cycle-value" id="cycle-count">0</span>
+            <div class="pipeline-connector">
+                <div class="connector-line"></div>
+                <div class="connector-arrow">▼</div>
+            </div>
+
+            <!-- ── Stage 8: Console Output ─────────────────────────── -->
+            <section class="stage" id="stage-console">
+                <div class="stage-header">
+                    <div class="stage-number">08</div>
+                    <div class="stage-info">
+                        <h2 class="stage-title">Console Output</h2>
+                        <p class="stage-desc">Program output from <code>print()</code> statements and system messages. The final result of your computation.</p>
                     </div>
+                    <div class="stage-dot dot-green"></div>
                 </div>
-            </div>
-        </div>
+                <div class="stage-body">
+                    <div id="console-output" class="console-view"></div>
+                </div>
+            </section>
 
-        <!-- ═══════════════════════════════════════════════════════════
-             Bottom Section — Memory, Console, Trace
-             ═══════════════════════════════════════════════════════════ -->
-        <div class="bottom-section">
-            <!-- Memory Grid -->
-            <div class="panel">
-                <div class="panel-header">
-                    <div class="panel-dot dot-purple"></div>
-                    <span class="panel-title">Memory (256 bytes)</span>
-                </div>
-                <div class="panel-body" id="memory-grid"></div>
+            <div class="pipeline-connector">
+                <div class="connector-line"></div>
+                <div class="connector-arrow">▼</div>
             </div>
 
-            <!-- Console Output -->
-            <div class="panel console-panel">
-                <div class="panel-header">
-                    <div class="panel-dot dot-green"></div>
-                    <span class="panel-title">Console</span>
+            <!-- ── Stage 9: Execution Trace ────────────────────────── -->
+            <section class="stage" id="stage-trace">
+                <div class="stage-header">
+                    <div class="stage-number">09</div>
+                    <div class="stage-info">
+                        <h2 class="stage-title">Execution Trace</h2>
+                        <p class="stage-desc">A cycle-by-cycle log of every instruction the CPU executed — with program counter, opcode, and explanation.</p>
+                    </div>
+                    <div class="stage-dot dot-amber"></div>
                 </div>
-                <div class="panel-body" id="console-output"></div>
-            </div>
+                <div class="stage-body">
+                    <div id="trace-output" class="trace-view"></div>
+                </div>
+            </section>
 
-            <!-- Execution Trace / Bytecode -->
-            <div class="panel trace-panel">
-                <div class="panel-header">
-                    <div class="panel-dot dot-amber"></div>
-                    <span class="panel-title">Execution Trace</span>
-                </div>
-                <div class="panel-body" id="trace-output"></div>
-            </div>
-        </div>
+        </main>
 
         <!-- ═══════════════════════════════════════════════════════════
              Status Bar
