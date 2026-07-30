@@ -173,118 +173,116 @@
                 <div class="connector-arrow">▼</div>
             </div>
 
-            <!-- ── Stage 6: CPU State ──────────────────────────────── -->
-            <section class="stage" id="stage-cpu">
-                <div class="stage-header">
-                    <div class="stage-number">06</div>
-                    <div class="stage-info">
-                        <h2 class="stage-title">CPU State</h2>
-                        <p class="stage-desc">The processor's registers, flags, and program counter. Watch values change as each instruction executes.</p>
+            <!-- ── Stages 6 & 7: CPU State & Memory (Side-by-Side) ────── -->
+            <div class="stage-row">
+                <!-- ── Stage 6: CPU State ──────────────────────────────── -->
+                <section class="stage" id="stage-cpu">
+                    <div class="stage-header">
+                        <div class="stage-number">06</div>
+                        <div class="stage-info">
+                            <h2 class="stage-title">CPU State</h2>
+                            <p class="stage-desc">The processor's registers, flags, and program counter. Watch values change as each instruction executes.</p>
+                        </div>
+                        <div class="stage-dot dot-blue"></div>
                     </div>
-                    <div class="stage-dot dot-blue"></div>
-                </div>
-                <div class="stage-body">
-                    <div class="cpu-layout">
-                        <!-- General Registers -->
-                        <div class="cpu-section">
-                            <div class="cpu-section-title">General Purpose Registers</div>
-                            <div class="register-group">
-                                <div class="register">
-                                    <span class="reg-name">R0</span>
-                                    <span class="reg-value" id="reg-r0">00</span>
-                                </div>
-                                <div class="register">
-                                    <span class="reg-name">R1</span>
-                                    <span class="reg-value" id="reg-r1">00</span>
-                                </div>
-                                <div class="register">
-                                    <span class="reg-name">R2</span>
-                                    <span class="reg-value" id="reg-r2">00</span>
-                                </div>
-                                <div class="register">
-                                    <span class="reg-name">R3</span>
-                                    <span class="reg-value" id="reg-r3">00</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Special Registers -->
-                        <div class="cpu-section">
-                            <div class="cpu-section-title">Pointers</div>
-                            <div class="register-group">
-                                <div class="register reg-pc">
-                                    <span class="reg-name">PC</span>
-                                    <span class="reg-value" id="reg-pc">00</span>
-                                </div>
-                                <div class="register reg-sp">
-                                    <span class="reg-name">SP</span>
-                                    <span class="reg-value" id="reg-sp">FF</span>
+                    <div class="stage-body">
+                        <div class="cpu-layout">
+                            <!-- General Registers -->
+                            <div class="cpu-section">
+                                <div class="cpu-section-title">General Purpose Registers</div>
+                                <div class="register-group">
+                                    <div class="register">
+                                        <span class="reg-name">R0</span>
+                                        <span class="reg-value" id="reg-r0">00</span>
+                                    </div>
+                                    <div class="register">
+                                        <span class="reg-name">R1</span>
+                                        <span class="reg-value" id="reg-r1">00</span>
+                                    </div>
+                                    <div class="register">
+                                        <span class="reg-name">R2</span>
+                                        <span class="reg-value" id="reg-r2">00</span>
+                                    </div>
+                                    <div class="register">
+                                        <span class="reg-name">R3</span>
+                                        <span class="reg-value" id="reg-r3">00</span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- Flags -->
-                        <div class="cpu-section">
-                            <div class="cpu-section-title">Status Flags</div>
-                            <div class="flag-group">
-                                <div class="flag">
-                                    <span class="flag-name">Z</span>
-                                    <span class="flag-value" id="flag-z">0</span>
-                                    <span class="flag-label">Zero</span>
-                                </div>
-                                <div class="flag">
-                                    <span class="flag-name">N</span>
-                                    <span class="flag-value" id="flag-n">0</span>
-                                    <span class="flag-label">Negative</span>
-                                </div>
-                                <div class="flag">
-                                    <span class="flag-name">C</span>
-                                    <span class="flag-value" id="flag-c">0</span>
-                                    <span class="flag-label">Carry</span>
-                                </div>
-                                <div class="flag">
-                                    <span class="flag-name">V</span>
-                                    <span class="flag-value" id="flag-v">0</span>
-                                    <span class="flag-label">Overflow</span>
+                            <!-- Special Registers -->
+                            <div class="cpu-section">
+                                <div class="cpu-section-title">Pointers</div>
+                                <div class="register-group">
+                                    <div class="register reg-pc">
+                                        <span class="reg-name">PC</span>
+                                        <span class="reg-value" id="reg-pc">00</span>
+                                    </div>
+                                    <div class="register reg-sp">
+                                        <span class="reg-name">SP</span>
+                                        <span class="reg-value" id="reg-sp">FF</span>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- Cycle Counter -->
-                        <div class="cpu-section">
-                            <div class="cpu-section-title">Clock Cycles</div>
-                            <div class="cycle-display">
-                                <span class="cycle-value" id="cycle-count">0</span>
+                            <!-- Flags -->
+                            <div class="cpu-section">
+                                <div class="cpu-section-title">Status Flags</div>
+                                <div class="flag-group">
+                                    <div class="flag">
+                                        <span class="flag-name">Z</span>
+                                        <span class="flag-value" id="flag-z">0</span>
+                                        <span class="flag-label">Zero</span>
+                                    </div>
+                                    <div class="flag">
+                                        <span class="flag-name">N</span>
+                                        <span class="flag-value" id="flag-n">0</span>
+                                        <span class="flag-label">Negative</span>
+                                    </div>
+                                    <div class="flag">
+                                        <span class="flag-name">C</span>
+                                        <span class="flag-value" id="flag-c">0</span>
+                                        <span class="flag-label">Carry</span>
+                                    </div>
+                                    <div class="flag">
+                                        <span class="flag-name">V</span>
+                                        <span class="flag-value" id="flag-v">0</span>
+                                        <span class="flag-label">Overflow</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Cycle Counter -->
+                            <div class="cpu-section">
+                                <div class="cpu-section-title">Clock Cycles</div>
+                                <div class="cycle-display">
+                                    <span class="cycle-value" id="cycle-count">0</span>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
-            </section>
+                </section>
 
-            <div class="pipeline-connector">
-                <div class="connector-line"></div>
-                <div class="connector-arrow">▼</div>
+                <!-- ── Stage 7: Memory ─────────────────────────────────── -->
+                <section class="stage" id="stage-memory">
+                    <div class="stage-header">
+                        <div class="stage-number">07</div>
+                        <div class="stage-info">
+                            <h2 class="stage-title">Memory</h2>
+                            <p class="stage-desc">256 bytes of addressable memory. Code lives at the top, variables in the data segment, and the stack grows downward from 0xFF.</p>
+                        </div>
+                        <div class="stage-dot dot-purple"></div>
+                    </div>
+                    <div class="stage-body">
+                        <div class="memory-legend">
+                            <span class="legend-item"><span class="legend-swatch legend-code"></span> Code (0x00–0xBF)</span>
+                            <span class="legend-item"><span class="legend-swatch legend-data"></span> Data (0xC0–0xEF)</span>
+                            <span class="legend-item"><span class="legend-swatch legend-stack"></span> Stack (0xF0–0xFF)</span>
+                        </div>
+                        <div id="memory-grid" class="memory-grid-container"></div>
+                    </div>
+                </section>
             </div>
-
-            <!-- ── Stage 7: Memory ─────────────────────────────────── -->
-            <section class="stage" id="stage-memory">
-                <div class="stage-header">
-                    <div class="stage-number">07</div>
-                    <div class="stage-info">
-                        <h2 class="stage-title">Memory</h2>
-                        <p class="stage-desc">256 bytes of addressable memory. Code lives at the top, variables in the data segment, and the stack grows downward from 0xFF.</p>
-                    </div>
-                    <div class="stage-dot dot-purple"></div>
-                </div>
-                <div class="stage-body">
-                    <div class="memory-legend">
-                        <span class="legend-item"><span class="legend-swatch legend-code"></span> Code (0x00–0xBF)</span>
-                        <span class="legend-item"><span class="legend-swatch legend-data"></span> Data (0xC0–0xEF)</span>
-                        <span class="legend-item"><span class="legend-swatch legend-stack"></span> Stack (0xF0–0xFF)</span>
-                    </div>
-                    <div id="memory-grid" class="memory-grid-container"></div>
-                </div>
-            </section>
 
             <div class="pipeline-connector">
                 <div class="connector-line"></div>
