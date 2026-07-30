@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="MiniCPU — Interactive Computer Architecture Learning Platform. Visualize compilation, assembly, and CPU execution step by step.">
+    <title>MiniCPU — Computer Architecture Visualizer</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div id="app">
+        <!-- ═══════════════════════════════════════════════════════════
+             Header / Toolbar
+             ═══════════════════════════════════════════════════════════ -->
+        <header class="header">
+            <div class="brand">
+                <div class="brand-icon">μ</div>
+                <div>
+                    <div class="brand-name">MiniCPU</div>
+                    <div class="brand-tag">Architecture Lab</div>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button id="btn-compile" class="btn btn-primary" title="Compile (Ctrl+Enter)">
+                    ⚡ Compile
+                </button>
+                <div class="toolbar-sep"></div>
+                <button id="btn-run" class="btn btn-run" title="Run (F5)">
+                    ▶ Run
+                </button>
+                <button id="btn-step" class="btn" title="Step (F10)">
+                    ⏭ Step
+                </button>
+                <button id="btn-pause" class="btn" disabled title="Pause (Esc)">
+                    ⏸ Pause
+                </button>
+                <button id="btn-fast" class="btn" title="Run to end (instant)">
+                    ⏩ Fast
+                </button>
+                <div class="toolbar-sep"></div>
+                <button id="btn-reset" class="btn btn-danger" title="Reset">
+                    ↺ Reset
+                </button>
+            </div>
+
+            <div class="speed-control">
+                <label for="speed-slider">Speed</label>
+                <input type="range" id="speed-slider" min="1" max="100" value="30">
+                <span id="speed-value" class="speed-value">5 Hz</span>
+            </div>
+
+            <div class="example-control">
+                <label for="example-select">Examples</label>
+                <select id="example-select"></select>
+            </div>
+        </header>
+
+        <!-- ═══════════════════════════════════════════════════════════
+             Main Content — 2×2 Grid
+             ═══════════════════════════════════════════════════════════ -->
+        <div class="main-content">
+            <!-- Source Code Editor -->
+            <div class="panel editor-panel">
+                <div class="panel-header">
+                    <div class="panel-dot dot-amber"></div>
+                    <span class="panel-title">Source Code</span>
+                </div>
+                <div class="panel-body">
+                    <textarea id="source-editor" 
+                              spellcheck="false" 
+                              autocomplete="off"
+                              placeholder="Write code here..."></textarea>
+                </div>
+            </div>
+
+            <!-- Tokens -->
+            <div class="panel token-panel">
+                <div class="panel-header">
+                    <div class="panel-dot dot-magenta"></div>
+                    <span class="panel-title">Tokens</span>
+                </div>
+                <div class="panel-body" id="token-output"></div>
+            </div>
+
+            <!-- AST -->
+            <div class="panel ast-panel">
+                <div class="panel-header">
+                    <div class="panel-dot dot-cyan"></div>
+                    <span class="panel-title">Abstract Syntax Tree</span>
+                </div>
+                <div class="panel-body" id="ast-output"></div>
+            </div>
+
+            <!-- Assembly -->
+            <div class="panel asm-panel">
+                <div class="panel-header">
+                    <div class="panel-dot dot-green"></div>
+                    <span class="panel-title">Assembly</span>
+                </div>
+                <div class="panel-body" id="asm-output"></div>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════
+             CPU Panel — Registers, Flags, Cycle Counter
+             ═══════════════════════════════════════════════════════════ -->
+        <div class="panel cpu-panel">
+            <div class="panel-header">
+                <div class="panel-dot dot-blue"></div>
+                <span class="panel-title">CPU State</span>
+            </div>
+            <div class="cpu-layout">
+                <!-- General Registers -->
+                <div class="cpu-section">
+                    <div class="cpu-section-title">Registers</div>
+                    <div class="register-group">
+                        <div class="register">
+                            <span class="reg-name">R0</span>
+                            <span class="reg-value" id="reg-r0">00</span>
+                        </div>
+                        <div class="register">
+                            <span class="reg-name">R1</span>
+                            <span class="reg-value" id="reg-r1">00</span>
+                        </div>
+                        <div class="register">
+                            <span class="reg-name">R2</span>
+                            <span class="reg-value" id="reg-r2">00</span>
+                        </div>
+                        <div class="register">
+                            <span class="reg-name">R3</span>
+                            <span class="reg-value" id="reg-r3">00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Special Registers -->
+                <div class="cpu-section">
+                    <div class="cpu-section-title">Pointers</div>
+                    <div class="register-group">
+                        <div class="register reg-pc">
+                            <span class="reg-name">PC</span>
+                            <span class="reg-value" id="reg-pc">00</span>
+                        </div>
+                        <div class="register reg-sp">
+                            <span class="reg-name">SP</span>
+                            <span class="reg-value" id="reg-sp">FF</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Flags -->
+                <div class="cpu-section">
+                    <div class="cpu-section-title">Flags</div>
+                    <div class="flag-group">
+                        <div class="flag">
+                            <span class="flag-name">Z</span>
+                            <span class="flag-value" id="flag-z">0</span>
+                        </div>
+                        <div class="flag">
+                            <span class="flag-name">N</span>
+                            <span class="flag-value" id="flag-n">0</span>
+                        </div>
+                        <div class="flag">
+                            <span class="flag-name">C</span>
+                            <span class="flag-value" id="flag-c">0</span>
+                        </div>
+                        <div class="flag">
+                            <span class="flag-name">V</span>
+                            <span class="flag-value" id="flag-v">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cycle Counter -->
+                <div class="cpu-section">
+                    <div class="cpu-section-title">Cycles</div>
+                    <div class="cycle-display">
+                        <span class="cycle-value" id="cycle-count">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════
+             Bottom Section — Memory, Console, Trace
+             ═══════════════════════════════════════════════════════════ -->
+        <div class="bottom-section">
+            <!-- Memory Grid -->
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-dot dot-purple"></div>
+                    <span class="panel-title">Memory (256 bytes)</span>
+                </div>
+                <div class="panel-body" id="memory-grid"></div>
+            </div>
+
+            <!-- Console Output -->
+            <div class="panel console-panel">
+                <div class="panel-header">
+                    <div class="panel-dot dot-green"></div>
+                    <span class="panel-title">Console</span>
+                </div>
+                <div class="panel-body" id="console-output"></div>
+            </div>
+
+            <!-- Execution Trace / Bytecode -->
+            <div class="panel trace-panel">
+                <div class="panel-header">
+                    <div class="panel-dot dot-amber"></div>
+                    <span class="panel-title">Execution Trace</span>
+                </div>
+                <div class="panel-body" id="trace-output"></div>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════════
+             Status Bar
+             ═══════════════════════════════════════════════════════════ -->
+        <footer class="status-bar" id="status-bar">
+            <div class="status-led led-idle" id="status-led"></div>
+            <span class="status-text" id="status-text">Ready</span>
+            <div class="status-shortcuts">
+                <span><kbd>Ctrl+Enter</kbd> Compile</span>
+                <span><kbd>F5</kbd> Run</span>
+                <span><kbd>F10</kbd> Step</span>
+                <span><kbd>Esc</kbd> Pause</span>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Scripts — order matters -->
+    <script src="engine.js"></script>
+    <script src="compiler.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
