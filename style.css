@@ -637,7 +637,9 @@ select:focus { border-color: var(--accent-amber); }
    ──────────────────────────────────────────────────────────────────────────── */
 
 .asm-listing {
-    /* Full width listing */
+    max-height: 360px;
+    overflow-y: auto;
+    padding-right: var(--space-xs);
 }
 
 .asm-label {

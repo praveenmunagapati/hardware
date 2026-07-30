@@ -131,31 +131,10 @@
                 <div class="connector-arrow">▼</div>
             </div>
 
-            <!-- ── Stage 4: Assembly ───────────────────────────────── -->
-            <section class="stage" id="stage-asm">
-                <div class="stage-header">
-                    <div class="stage-number">04</div>
-                    <div class="stage-info">
-                        <h2 class="stage-title">Assembly</h2>
-                        <p class="stage-desc">The code generator walks the AST and emits low-level assembly instructions — one step away from machine code.</p>
-                    </div>
-                    <div class="stage-dot dot-green"></div>
-                </div>
-                <div class="stage-body">
-                    <div id="asm-output" class="asm-listing"></div>
-                </div>
-            </section>
-
-            <div class="pipeline-connector">
-                <div class="connector-line"></div>
-                <div class="connector-label">Assembly → Machine Code</div>
-                <div class="connector-arrow">▼</div>
-            </div>
-
-            <!-- ── Stage 5: Bytecode ───────────────────────────────── -->
+            <!-- ── Stage 4: Machine Code ───────────────────────────── -->
             <section class="stage" id="stage-bytecode">
                 <div class="stage-header">
-                    <div class="stage-number">05</div>
+                    <div class="stage-number">04</div>
                     <div class="stage-info">
                         <h2 class="stage-title">Machine Code</h2>
                         <p class="stage-desc">The assembler resolves labels and encodes each instruction into raw bytes — the only thing the CPU understands.</p>
@@ -167,18 +146,59 @@
                 </div>
             </section>
 
-            <div class="pipeline-connector connector-execution">
+            <div class="pipeline-connector">
                 <div class="connector-line"></div>
-                <div class="connector-label">Loaded into Memory → CPU Executes</div>
+                <div class="connector-label">Loaded into Memory</div>
                 <div class="connector-arrow">▼</div>
             </div>
 
-            <!-- ── Stages 6 & 7: CPU State & Memory (Side-by-Side) ────── -->
+            <!-- ── Stage 5: Memory ─────────────────────────────────── -->
+            <section class="stage" id="stage-memory">
+                <div class="stage-header">
+                    <div class="stage-number">05</div>
+                    <div class="stage-info">
+                        <h2 class="stage-title">Memory</h2>
+                        <p class="stage-desc">256 bytes of addressable memory. Code lives at the top, variables in the data segment, and the stack grows downward from 0xFF.</p>
+                    </div>
+                    <div class="stage-dot dot-purple"></div>
+                </div>
+                <div class="stage-body">
+                    <div class="memory-legend">
+                        <span class="legend-item"><span class="legend-swatch legend-code"></span> Code (0x00–0xBF)</span>
+                        <span class="legend-item"><span class="legend-swatch legend-data"></span> Data (0xC0–0xEF)</span>
+                        <span class="legend-item"><span class="legend-swatch legend-stack"></span> Stack (0xF0–0xFF)</span>
+                    </div>
+                    <div id="memory-grid" class="memory-grid-container"></div>
+                </div>
+            </section>
+
+            <div class="pipeline-connector connector-execution">
+                <div class="connector-line"></div>
+                <div class="connector-label">CPU Step & Execution</div>
+                <div class="connector-arrow">▼</div>
+            </div>
+
+            <!-- ── Stages 6 & 7: Assembly & CPU State (Side-by-Side) ────── -->
             <div class="stage-row">
-                <!-- ── Stage 6: CPU State ──────────────────────────────── -->
-                <section class="stage" id="stage-cpu">
+                <!-- ── Stage 6: Assembly ───────────────────────────────── -->
+                <section class="stage" id="stage-asm">
                     <div class="stage-header">
                         <div class="stage-number">06</div>
+                        <div class="stage-info">
+                            <h2 class="stage-title">Assembly</h2>
+                            <p class="stage-desc">The code generator emits low-level assembly instructions — tracked step-by-step with Program Counter.</p>
+                        </div>
+                        <div class="stage-dot dot-green"></div>
+                    </div>
+                    <div class="stage-body">
+                        <div id="asm-output" class="asm-listing"></div>
+                    </div>
+                </section>
+
+                <!-- ── Stage 7: CPU State ──────────────────────────────── -->
+                <section class="stage" id="stage-cpu">
+                    <div class="stage-header">
+                        <div class="stage-number">07</div>
                         <div class="stage-info">
                             <h2 class="stage-title">CPU State</h2>
                             <p class="stage-desc">The processor's registers, flags, and program counter. Watch values change as each instruction executes.</p>
@@ -260,26 +280,6 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </section>
-
-                <!-- ── Stage 7: Memory ─────────────────────────────────── -->
-                <section class="stage" id="stage-memory">
-                    <div class="stage-header">
-                        <div class="stage-number">07</div>
-                        <div class="stage-info">
-                            <h2 class="stage-title">Memory</h2>
-                            <p class="stage-desc">256 bytes of addressable memory. Code lives at the top, variables in the data segment, and the stack grows downward from 0xFF.</p>
-                        </div>
-                        <div class="stage-dot dot-purple"></div>
-                    </div>
-                    <div class="stage-body">
-                        <div class="memory-legend">
-                            <span class="legend-item"><span class="legend-swatch legend-code"></span> Code (0x00–0xBF)</span>
-                            <span class="legend-item"><span class="legend-swatch legend-data"></span> Data (0xC0–0xEF)</span>
-                            <span class="legend-item"><span class="legend-swatch legend-stack"></span> Stack (0xF0–0xFF)</span>
-                        </div>
-                        <div id="memory-grid" class="memory-grid-container"></div>
                     </div>
                 </section>
             </div>
