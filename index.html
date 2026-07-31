@@ -1,15 +1,20 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="MiniCPU 32-bit — Interactive Computer Architecture Learning Platform. Write real C code and visualize compilation, assembly, and 32-bit CPU execution step by step.">
+    <meta name="description"
+        content="MiniCPU 32-bit — Interactive Computer Architecture Learning Platform. Write real C code and visualize compilation, assembly, and 32-bit CPU execution step by step.">
     <title>MiniCPU 32-bit — Computer Architecture Visualizer</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
+        rel="stylesheet">
 </head>
+
 <body>
     <div id="app">
         <!-- ═══════════════════════════════════════════════════════════
@@ -25,6 +30,9 @@
             </div>
 
             <div class="controls">
+                <button id="btn-compile" class="btn btn-primary btn-compile-action" title="Compile C Code (Ctrl+Enter)">
+                    ⚡ Compile
+                </button>
                 <button class="btn btn-run btn-run-action" title="Run (F5)">
                     ▶ Run
                 </button>
@@ -70,7 +78,9 @@
                     <div class="stage-number">01</div>
                     <div class="stage-info">
                         <h2 class="stage-title">Source Code (.c)</h2>
-                        <p class="stage-desc">Write high-level C code. Supports <code>main()</code>, <code>printf()</code>, <code>for</code>/<code>while</code> loops, <code>if</code>/<code>else</code>, <code>return</code>, and arithmetic.</p>
+                        <p class="stage-desc">Write high-level C code. Supports <code>main()</code>,
+                            <code>printf()</code>, <code>for</code>/<code>while</code> loops,
+                            <code>if</code>/<code>else</code>, <code>return</code>, and arithmetic.</p>
                         <div class="stage-feature-tags">
                             <span class="stage-tag">• High-Level C Input</span>
                             <span class="stage-tag">• Functions & Statements</span>
@@ -78,7 +88,8 @@
                         </div>
                     </div>
                     <div class="stage-actions">
-                        <button id="btn-compile" class="btn btn-primary btn-compile-action" title="Compile C Code (Ctrl+Enter)">
+                        <button id="btn-compile" class="btn btn-primary btn-compile-action"
+                            title="Compile C Code (Ctrl+Enter)">
                             ⚡ Compile
                         </button>
                         <button id="btn-copy-source" class="btn" title="Copy Source Code">
@@ -93,11 +104,8 @@
                 <div class="stage-body">
                     <div class="editor-container">
                         <pre id="editor-highlight" aria-hidden="true"><code id="highlighting-content"></code></pre>
-                        <textarea id="source-editor"
-                                  spellcheck="false"
-                                  autocomplete="off"
-                                  placeholder="Write C code here..."
-                                  rows="16"></textarea>
+                        <textarea id="source-editor" spellcheck="false" autocomplete="off"
+                            placeholder="Write C code here..." rows="16"></textarea>
                     </div>
                 </div>
             </section>
@@ -114,7 +122,8 @@
                     <div class="stage-number">02</div>
                     <div class="stage-info">
                         <h2 class="stage-title">1. Preprocessing → Preprocessed Source (.i)</h2>
-                        <p class="stage-desc">The C Preprocessor expands headers, substitutes macros, and strips comments before lexical analysis.</p>
+                        <p class="stage-desc">The C Preprocessor expands headers, substitutes macros, and strips
+                            comments before lexical analysis.</p>
                         <div class="stage-feature-tags">
                             <span class="stage-tag">• File Inclusion (#include)</span>
                             <span class="stage-tag">• Macro Expansion (#define)</span>
@@ -131,7 +140,8 @@
                     <div class="stage-dot dot-amber"></div>
                 </div>
                 <div class="stage-body">
-                    <pre id="preprocessed-output" class="preprocessed-view"><code>// Preprocessed code will appear here after compilation...</code></pre>
+                    <pre id="preprocessed-output"
+                        class="preprocessed-view"><code>// Preprocessed code will appear here after compilation...</code></pre>
                 </div>
             </section>
 
@@ -147,7 +157,8 @@
                     <div class="stage-number">03</div>
                     <div class="stage-info">
                         <h2 class="stage-title">2. Lexical Analysis → Tokens</h2>
-                        <p class="stage-desc">The lexer scans characters and groups them into atomic compiler tokens with positions and attributes.</p>
+                        <p class="stage-desc">The lexer scans characters and groups them into atomic compiler tokens
+                            with positions and attributes.</p>
                         <div class="stage-feature-tags">
                             <span class="stage-tag">• Input Buffering</span>
                             <span class="stage-tag">• Regex Matching</span>
@@ -180,7 +191,8 @@
                     <div class="stage-number">04</div>
                     <div class="stage-info">
                         <h2 class="stage-title">3. Syntax Analysis → Abstract Syntax Tree (AST)</h2>
-                        <p class="stage-desc">The parser builds a hierarchical tree capturing the program's structural semantics and statement flow.</p>
+                        <p class="stage-desc">The parser builds a hierarchical tree capturing the program's structural
+                            semantics and statement flow.</p>
                         <div class="stage-feature-tags">
                             <span class="stage-tag">• Context-Free Grammar Rules</span>
                             <span class="stage-tag">• LL/LR Parsing Engines</span>
@@ -218,7 +230,8 @@
                     <div class="stage-number">05</div>
                     <div class="stage-info">
                         <h2 class="stage-title">4. Semantic Analysis → Annotated Symbol Table</h2>
-                        <p class="stage-desc">Validates variable scope, strict type checking, function signatures, and assigns memory symbol offsets.</p>
+                        <p class="stage-desc">Validates variable scope, strict type checking, function signatures, and
+                            assigns memory symbol offsets.</p>
                         <div class="stage-feature-tags">
                             <span class="stage-tag">• Strict Type Checking</span>
                             <span class="stage-tag">• Variable Scope Resolution</span>
@@ -249,7 +262,8 @@
                     <div class="stage-number">06</div>
                     <div class="stage-info">
                         <h2 class="stage-title">5. Intermediate Code Gen → Raw IR (Three-Address Code)</h2>
-                        <p class="stage-desc">Translates AST into Target-Independent Three-Address Code (3AC) quadruples and temporaries.</p>
+                        <p class="stage-desc">Translates AST into Target-Independent Three-Address Code (3AC) quadruples
+                            and temporaries.</p>
                         <div class="stage-feature-tags">
                             <span class="stage-tag">• Target-Independent Mapping</span>
                             <span class="stage-tag">• Three-Address Code (3AC)</span>
@@ -264,7 +278,8 @@
                     <div class="stage-dot dot-magenta"></div>
                 </div>
                 <div class="stage-body">
-                    <pre id="raw-ir-output" class="preprocessed-view"><code>// Raw Three-Address Code (3AC) IR will appear here...</code></pre>
+                    <pre id="raw-ir-output"
+                        class="preprocessed-view"><code>// Raw Three-Address Code (3AC) IR will appear here...</code></pre>
                 </div>
             </section>
 
@@ -280,7 +295,8 @@
                     <div class="stage-number">07</div>
                     <div class="stage-info">
                         <h2 class="stage-title">6. IR Optimization → Optimized IR</h2>
-                        <p class="stage-desc">Applies compiler optimizations including Constant Folding, Control Flow Graphs (CFG), and Dead Code Elimination.</p>
+                        <p class="stage-desc">Applies compiler optimizations including Constant Folding, Control Flow
+                            Graphs (CFG), and Dead Code Elimination.</p>
                         <div class="stage-feature-tags">
                             <span class="stage-tag">• Control Flow Graphs (CFG)</span>
                             <span class="stage-tag">• Constant Folding</span>
@@ -296,7 +312,8 @@
                     <div class="stage-dot dot-green"></div>
                 </div>
                 <div class="stage-body">
-                    <pre id="opt-ir-output" class="preprocessed-view"><code>// Optimized IR will appear here...</code></pre>
+                    <pre id="opt-ir-output"
+                        class="preprocessed-view"><code>// Optimized IR will appear here...</code></pre>
                 </div>
             </section>
 
@@ -314,7 +331,8 @@
                         <div class="stage-number">08</div>
                         <div class="stage-info">
                             <h2 class="stage-title">7. Code Gen → Assembly Code (.s)</h2>
-                            <p class="stage-desc">Emits 32-bit CPU Assembly with instruction selection, register allocation, and live PC line tracking.</p>
+                            <p class="stage-desc">Emits 32-bit CPU Assembly with instruction selection, register
+                                allocation, and live PC line tracking.</p>
                             <div class="stage-feature-tags">
                                 <span class="stage-tag">• CPU Instruction Selection</span>
                                 <span class="stage-tag">• Register Allocation</span>
@@ -345,7 +363,8 @@
                         <div class="stage-number">09</div>
                         <div class="stage-info">
                             <h2 class="stage-title">10. CPU Hardware Execution</h2>
-                            <p class="stage-desc">32-bit processor hardware registers, pointers, flags, and clock cycles executing instructions.</p>
+                            <p class="stage-desc">32-bit processor hardware registers, pointers, flags, and clock cycles
+                                executing instructions.</p>
                             <div class="stage-feature-tags">
                                 <span class="stage-tag">• Fetch-Decode-Execute Loop</span>
                                 <span class="stage-tag">• Registers (R0–R7)</span>
@@ -473,7 +492,8 @@
                     <div class="stage-number">10</div>
                     <div class="stage-info">
                         <h2 class="stage-title">8. Assembler & Encoding → Machine Code (.bin)</h2>
-                        <p class="stage-desc">Resolves jump labels and encodes instructions into raw 32-bit binary opcodes for CPU execution.</p>
+                        <p class="stage-desc">Resolves jump labels and encodes instructions into raw 32-bit binary
+                            opcodes for CPU execution.</p>
                         <div class="stage-feature-tags">
                             <span class="stage-tag">• Label Resolution</span>
                             <span class="stage-tag">• Opcode Encoding</span>
@@ -510,7 +530,8 @@
                     <div class="stage-number">11</div>
                     <div class="stage-info">
                         <h2 class="stage-title">9. Memory Linking & Load → Memory (RAM)</h2>
-                        <p class="stage-desc">4 KB byte-addressable memory layout. Code segment at 0x000, Data segment at 0x800, and Stack segment at 0xFFC.</p>
+                        <p class="stage-desc">4 KB byte-addressable memory layout. Code segment at 0x000, Data segment
+                            at 0x800, and Stack segment at 0xFFC.</p>
                         <div class="stage-feature-tags">
                             <span class="stage-tag">• Code Segment (0x000–0x7FF)</span>
                             <span class="stage-tag">• Data Segment (0x800–0xFBF)</span>
@@ -532,9 +553,12 @@
                 </div>
                 <div class="stage-body">
                     <div class="memory-legend">
-                        <span class="legend-item"><span class="legend-swatch legend-code"></span> Code (0x000–0x7FF)</span>
-                        <span class="legend-item"><span class="legend-swatch legend-data"></span> Data (0x800–0xFBF)</span>
-                        <span class="legend-item"><span class="legend-swatch legend-stack"></span> Stack (0xFC0–0xFFF)</span>
+                        <span class="legend-item"><span class="legend-swatch legend-code"></span> Code
+                            (0x000–0x7FF)</span>
+                        <span class="legend-item"><span class="legend-swatch legend-data"></span> Data
+                            (0x800–0xFBF)</span>
+                        <span class="legend-item"><span class="legend-swatch legend-stack"></span> Stack
+                            (0xFC0–0xFFF)</span>
                     </div>
                     <div id="memory-grid" class="memory-grid-container"></div>
                 </div>
@@ -551,7 +575,8 @@
                     <div class="stage-number">12</div>
                     <div class="stage-info">
                         <h2 class="stage-title">Console Output</h2>
-                        <p class="stage-desc">Program output from <code>printf()</code> calls and system messages. Just like running your program in a terminal.</p>
+                        <p class="stage-desc">Program output from <code>printf()</code> calls and system messages. Just
+                            like running your program in a terminal.</p>
                     </div>
                     <div class="stage-actions">
                         <button id="btn-clear-console" class="btn" title="Clear Console Output">
@@ -579,7 +604,8 @@
                     <div class="stage-number">13</div>
                     <div class="stage-info">
                         <h2 class="stage-title">Execution Trace</h2>
-                        <p class="stage-desc">A cycle-by-cycle log of every instruction the CPU executed — with program counter, opcode, and explanation.</p>
+                        <p class="stage-desc">A cycle-by-cycle log of every instruction the CPU executed — with program
+                            counter, opcode, and explanation.</p>
                     </div>
                     <div class="stage-actions">
                         <button id="btn-clear-trace" class="btn" title="Clear Execution Trace">
@@ -619,4 +645,5 @@
     <script src="compiler.js"></script>
     <script src="app.js"></script>
 </body>
+
 </html>
