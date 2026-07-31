@@ -1856,21 +1856,31 @@ class IRGenerator {
         return this.instructions;
     }
 
+    _genBody(body) {
+        if (!body) return;
+        if (Array.isArray(body)) {
+            for (const s of body) this._genStmt(s);
+        } else if (typeof body === 'object') {
+            if (body.type === 'Block' && body.body) {
+                this._genBody(body.body);
+            } else {
+                this._genStmt(body);
+            }
+        }
+    }
+
     _genStmt(node) {
         if (!node) return;
         switch (node.type) {
             case 'Program':
-                if (node.body) {
-                    for (const s of node.body) this._genStmt(s);
-                }
+            case 'Block':
+                this._genBody(node.body);
                 break;
             case 'FunctionDecl':
-                this.instructions.push({ op: 'LABEL', target: node.name, text: `${node.name}:` });
-                if (node.body) {
-                    for (const stmt of node.body) {
-                        this._genStmt(stmt);
-                    }
+                if (node.name) {
+                    this.instructions.push({ op: 'LABEL', target: node.name, text: `${node.name}:` });
                 }
+                this._genBody(node.body);
                 break;
             case 'VarDecl':
                 if (node.initializer) {
@@ -1924,9 +1934,7 @@ class IRGenerator {
                     const cond = this._genExpr(node.condition);
                     this.instructions.push({ op: 'IF_FALSE', arg1: cond, target: loopEnd, text: `if_false ${cond} goto ${loopEnd}` });
                 }
-                if (node.body) {
-                    for (const s of node.body) this._genStmt(s);
-                }
+                this._genBody(node.body);
                 if (node.update) this._genStmt(node.update);
                 this.instructions.push({ op: 'GOTO', target: loopStart, text: `goto ${loopStart}` });
                 this.instructions.push({ op: 'LABEL', target: loopEnd, text: `${loopEnd}:` });
@@ -1939,9 +1947,7 @@ class IRGenerator {
                     const cond = this._genExpr(node.condition);
                     this.instructions.push({ op: 'IF_FALSE', arg1: cond, target: wEnd, text: `if_false ${cond} goto ${wEnd}` });
                 }
-                if (node.body) {
-                    for (const s of node.body) this._genStmt(s);
-                }
+                this._genBody(node.body);
                 this.instructions.push({ op: 'GOTO', target: wStart, text: `goto ${wStart}` });
                 this.instructions.push({ op: 'LABEL', target: wEnd, text: `${wEnd}:` });
                 break;
@@ -1950,14 +1956,10 @@ class IRGenerator {
                 const endIf = this._newLabel();
                 const ifCond = this._genExpr(node.condition);
                 this.instructions.push({ op: 'IF_FALSE', arg1: ifCond, target: elseLabel, text: `if_false ${ifCond} goto ${elseLabel}` });
-                if (node.consequent) {
-                    for (const s of node.consequent) this._genStmt(s);
-                }
+                this._genBody(node.consequent);
                 this.instructions.push({ op: 'GOTO', target: endIf, text: `goto ${endIf}` });
                 this.instructions.push({ op: 'LABEL', target: elseLabel, text: `${elseLabel}:` });
-                if (node.alternate) {
-                    for (const s of node.alternate) this._genStmt(s);
-                }
+                this._genBody(node.alternate);
                 this.instructions.push({ op: 'LABEL', target: endIf, text: `${endIf}:` });
                 break;
             default:

@@ -78,6 +78,47 @@
     --header-height: 52px;
 }
 
+[data-theme="light"] {
+    /* Foundation — Crisp White & Slate Light Mode */
+    --bg-primary:    #f4f6fa;
+    --bg-secondary:  #ffffff;
+    --bg-tertiary:   #e5e9f0;
+    --bg-panel:      #ffffff;
+    --bg-input:      #edf1f7;
+
+    /* Borders */
+    --border-subtle: #d8e0e8;
+    --border-medium: #b0bec5;
+    --border-bright: #78909c;
+
+    /* Text — High Contrast Crisp Dark */
+    --text-primary:  #1e293b;
+    --text-secondary:#475569;
+    --text-muted:    #64748b;
+    --text-bright:   #0f172a;
+
+    /* Accents tailored for Light Mode */
+    --accent-amber:  #d97706;
+    --accent-amber-dim: #b45309;
+    --accent-cyan:   #0284c7;
+    --accent-green:  #16a34a;
+    --accent-magenta:#c026d3;
+    --accent-red:    #dc2626;
+    --accent-blue:   #2563eb;
+    --accent-purple: #7c3aed;
+
+    /* Glows & Shadows */
+    --glow-amber:    rgba(217, 119, 6, 0.15);
+    --glow-cyan:     rgba(2, 132, 199, 0.15);
+    --glow-green:    rgba(22, 163, 74, 0.15);
+    --glow-red:      rgba(220, 38, 38, 0.15);
+
+    --shadow-sm:  0 1px 3px rgba(0,0,0,0.06);
+    --shadow-md:  0 4px 12px rgba(0,0,0,0.08);
+    --shadow-lg:  0 8px 32px rgba(0,0,0,0.1);
+    --shadow-glow: 0 0 20px rgba(217, 119, 6, 0.08);
+}
+
 
 /* ────────────────────────────────────────────────────────────────────────────
    Global Reset & Base

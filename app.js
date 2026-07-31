@@ -1275,6 +1275,26 @@ int main() {
     // ════════════════════════════════════════════════════════════════════
 
     function attachEventHandlers() {
+        // Theme Toggle Handler
+        const btnThemeToggle = $('#btn-theme-toggle');
+        let currentTheme = localStorage.getItem('minicpu_theme') || 'dark';
+
+        function applyTheme(theme) {
+            currentTheme = theme;
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('minicpu_theme', theme);
+            if (btnThemeToggle) {
+                btnThemeToggle.innerHTML = theme === 'light' ? '🌙 Dark Mode' : '☀️ Light Mode';
+            }
+        }
+
+        if (btnThemeToggle) {
+            btnThemeToggle.addEventListener('click', () => {
+                applyTheme(currentTheme === 'light' ? 'dark' : 'light');
+            });
+        }
+        applyTheme(currentTheme);
+
         // Multi-instance buttons (Header & Stage 6 Assembly bar)
         $$('.btn-compile-action').forEach(el => el.addEventListener('click', doCompile));
         $$('.btn-run-action').forEach(el => el.addEventListener('click', doRun));
