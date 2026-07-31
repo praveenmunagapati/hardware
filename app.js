@@ -241,14 +241,26 @@ int main() {
     // Initialize
     // ════════════════════════════════════════════════════════════════════
 
+    function preserveWindowScroll(fn) {
+        const x = window.scrollX;
+        const y = window.scrollY;
+        fn();
+        window.scrollTo(x, y);
+    }
+
     function init() {
+        if ('scrollRestoration' in history) {
+            history.scrollRestoration = 'manual';
+        }
+        window.scrollTo(0, 0);
         populateExamples();
         buildMemoryGrid();
         attachEventHandlers();
         attachBusListeners();
         loadExample('Hello World');
         updateStatusBar('Ready', 'idle');
-        setTimeout(() => doCompile(), 200);
+        doCompile();
+        window.scrollTo(0, 0);
     }
 
     function populateExamples() {
@@ -1025,19 +1037,21 @@ int main() {
                 }
             }
 
-            // Render all panels
-            renderPreprocessedCode(result.preprocessedCode, result.expandedHeaders);
-            renderTokens(result.tokens);
-            renderAST(result.ast);
-            renderSemanticSymbols(result.symbolTable, result.symbols);
-            renderRawIR(result.rawIR);
-            renderOptimizedIR(result.optimizedIR);
-            renderAssembly(result.listing, result.labels);
-            renderBytecode(result.bytecode);
-            updateMemoryGrid();
-            updateRegisters();
-            updateFlags();
-            highlightCurrentInstruction();
+            // Render all panels while preserving main window scroll
+            preserveWindowScroll(() => {
+                renderPreprocessedCode(result.preprocessedCode, result.expandedHeaders);
+                renderTokens(result.tokens);
+                renderAST(result.ast);
+                renderSemanticSymbols(result.symbolTable, result.symbols);
+                renderRawIR(result.rawIR);
+                renderOptimizedIR(result.optimizedIR);
+                renderAssembly(result.listing, result.labels);
+                renderBytecode(result.bytecode);
+                updateMemoryGrid();
+                updateRegisters();
+                updateFlags();
+                highlightCurrentInstruction();
+            });
 
             appendConsole(`✓ Compiled: ${result.bytecode.length} bytes, ${result.listing.length} instructions`, 'info');
 
@@ -1477,9 +1491,15 @@ int main() {
 
         if (exampleSelect) {
             exampleSelect.addEventListener('change', () => {
+                const currentX = window.scrollX;
+                const currentY = window.scrollY;
+                if (document.activeElement === exampleSelect) {
+                    exampleSelect.blur();
+                }
                 loadExample(exampleSelect.value);
                 doReset();
-                setTimeout(() => doCompile(), 100);
+                doCompile();
+                window.scrollTo(currentX, currentY);
             });
         }
 
