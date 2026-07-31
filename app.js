@@ -17,6 +17,16 @@
     let compiledData = null;
     let isCompiled = false;
 
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
     // ════════════════════════════════════════════════════════════════════
     // Example Programs (C style with main/printf)
     // ════════════════════════════════════════════════════════════════════
@@ -689,50 +699,106 @@ int main() {
     // Semantic Analysis & Symbol Table Display
     // ════════════════════════════════════════════════════════════════════
 
+    // ════════════════════════════════════════════════════════════════════
+    // Semantic Analysis & Symbol Table Display
+    // ════════════════════════════════════════════════════════════════════
+
     function renderSemanticSymbols(symbolTable, genSymbols) {
         if (!symbolPanel) return;
-        let text = '// ── Annotated Symbol Table & Scope Resolution ──\n';
-        text += '// Checks variable declarations, strict types, and memory offsets\n\n';
-
         const map = genSymbols || symbolTable;
-        if (map && map.size > 0) {
-            for (const [name, info] of map) {
-                const addr = typeof info === 'number' ? info : (info.address !== undefined ? info.address : 0);
-                const addrHex = `0x${addr.toString(16).toUpperCase().padStart(3, '0')}`;
-                text += `Symbol: "${name.padEnd(12)}"  Type: int32_t   Scope: local/global   Address: ${addrHex}\n`;
-            }
-        } else {
-            text += '// No variables declared in program symbols\n';
+        if (!map || map.size === 0) {
+            symbolPanel.innerHTML = '<div class="symbol-empty">// No symbols registered in symbol table</div>';
+            return;
         }
-        symbolPanel.textContent = text;
+
+        let html = `
+        <div class="symbol-table-wrapper">
+            <table class="symbol-table">
+                <thead>
+                    <tr>
+                        <th>Identifier</th>
+                        <th>Data Type</th>
+                        <th>Scope</th>
+                        <th>Memory Offset</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+
+        for (const [name, info] of map) {
+            const addr = typeof info === 'number' ? info : (info.address !== undefined ? info.address : 0);
+            const addrHex = `0x${addr.toString(16).toUpperCase().padStart(3, '0')}`;
+            const type = typeof info === 'object' && info.type ? info.type : 'int32_t';
+            const scope = typeof info === 'object' && info.scope ? info.scope : 'local';
+
+            html += `
+                <tr>
+                    <td><code class="sym-name">${escapeHtml(name)}</code></td>
+                    <td><span class="sym-badge sym-type">${escapeHtml(type)}</span></td>
+                    <td><span class="sym-badge sym-scope">${escapeHtml(scope)}</span></td>
+                    <td><code class="sym-addr">${addrHex}</code></td>
+                    <td><span class="sym-badge sym-valid">✓ Resolved</span></td>
+                </tr>`;
+        }
+
+        html += `
+                </tbody>
+            </table>
+        </div>`;
+
+        symbolPanel.innerHTML = html;
     }
 
     // ════════════════════════════════════════════════════════════════════
     // Intermediate Representation (3AC IR Display)
     // ════════════════════════════════════════════════════════════════════
 
+    function highlight3ACIR(text) {
+        if (!text) return '';
+        const lines = text.split('\n');
+        return lines.map(line => {
+            if (line.trim().startsWith('//')) {
+                return `<span class="ir-comment">${escapeHtml(line)}</span>`;
+            }
+            let html = escapeHtml(line);
+            // Line numbers 000:
+            html = html.replace(/^(\d+:)/g, '<span class="ir-linenum">$1</span>');
+            // Labels e.g. L_IR0: or main:
+            html = html.replace(/\b([A-Za-z_]\w*:)/g, '<span class="ir-label">$1</span>');
+            // Keywords
+            html = html.replace(/\b(if_false|goto|param|call|return|decl)\b/g, '<span class="ir-kw">$1</span>');
+            // Temporaries
+            html = html.replace(/\b(t\d+)\b/g, '<span class="ir-temp">$1</span>');
+            // Inline comments /* ... */
+            html = html.replace(/(\/\*.*?\*\/)/g, '<span class="ir-comment">$1</span>');
+            // Numbers
+            html = html.replace(/\b(\d+)\b/g, '<span class="ir-number">$1</span>');
+            return html;
+        }).join('\n');
+    }
+
     function renderRawIR(rawIR) {
         if (!rawIRPanel) return;
         if (!rawIR || rawIR.length === 0) {
-            rawIRPanel.textContent = '// No Three-Address Code (3AC) IR generated';
+            rawIRPanel.innerHTML = '<span class="ir-comment">// No Three-Address Code (3AC) IR generated</span>';
             return;
         }
         let text = '// ── Raw Three-Address Code (3AC IR) ──\n';
         text += '// Target-Independent quadruple statements and temporaries\n\n';
         text += rawIR.map((inst, i) => `${String(i).padStart(3, '0')}: ${inst.text || `${inst.target || ''} ${inst.op} ${inst.arg1 || ''} ${inst.arg2 || ''}`}`).join('\n');
-        rawIRPanel.textContent = text;
+        rawIRPanel.innerHTML = highlight3ACIR(text);
     }
 
     function renderOptimizedIR(optIR) {
         if (!optIRPanel) return;
         if (!optIR || optIR.length === 0) {
-            optIRPanel.textContent = '// No Optimized IR generated';
+            optIRPanel.innerHTML = '<span class="ir-comment">// No Optimized IR generated</span>';
             return;
         }
         let text = '// ── Optimized Intermediate Representation (Opt IR) ──\n';
         text += '// Transformed via Constant Folding & Dead Code Elimination\n\n';
         text += optIR.map((inst, i) => `${String(i).padStart(3, '0')}: ${inst.text || `${inst.target || ''} ${inst.op} ${inst.arg1 || ''} ${inst.arg2 || ''}`}`).join('\n');
-        optIRPanel.textContent = text;
+        optIRPanel.innerHTML = highlight3ACIR(text);
     }
 
     // ════════════════════════════════════════════════════════════════════

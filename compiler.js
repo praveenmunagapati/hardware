@@ -1850,10 +1850,8 @@ class IRGenerator {
         this.labelCount = 0;
         this.instructions = [];
 
-        if (ast && ast.body) {
-            for (const stmt of ast.body) {
-                this._genStmt(stmt);
-            }
+        if (ast) {
+            this._genStmt(ast);
         }
         return this.instructions;
     }
@@ -1861,7 +1859,12 @@ class IRGenerator {
     _genStmt(node) {
         if (!node) return;
         switch (node.type) {
-            case 'FUNCTION_DECL':
+            case 'Program':
+                if (node.body) {
+                    for (const s of node.body) this._genStmt(s);
+                }
+                break;
+            case 'FunctionDecl':
                 this.instructions.push({ op: 'LABEL', target: node.name, text: `${node.name}:` });
                 if (node.body) {
                     for (const stmt of node.body) {
@@ -1869,7 +1872,7 @@ class IRGenerator {
                     }
                 }
                 break;
-            case 'VAR_DECL':
+            case 'VarDecl':
                 if (node.initializer) {
                     const t = this._genExpr(node.initializer);
                     this.instructions.push({ op: '=', target: node.name, arg1: t, text: `${node.name} = ${t}` });
@@ -1877,11 +1880,28 @@ class IRGenerator {
                     this.instructions.push({ op: 'DECL', target: node.name, text: `decl ${node.name}` });
                 }
                 break;
-            case 'ASSIGNMENT':
+            case 'Assignment':
+            case 'CompoundAssign': {
                 const val = this._genExpr(node.value);
-                this.instructions.push({ op: node.operator || '=', target: node.name, arg1: val, text: `${node.name} ${node.operator || '='} ${val}` });
+                const op = node.operator || '=';
+                if (op === '=') {
+                    this.instructions.push({ op: '=', target: node.name, arg1: val, text: `${node.name} = ${val}` });
+                } else {
+                    const baseOp = op.replace('=', '');
+                    const t = this._newTemp();
+                    this.instructions.push({ op: baseOp, target: t, arg1: node.name, arg2: val, text: `${t} = ${node.name} ${baseOp} ${val}` });
+                    this.instructions.push({ op: '=', target: node.name, arg1: t, text: `${node.name} = ${t}` });
+                }
                 break;
-            case 'PRINTF':
+            }
+            case 'IncDec': {
+                const t = this._newTemp();
+                const baseOp = node.operator === '++' ? '+' : '-';
+                this.instructions.push({ op: baseOp, target: t, arg1: node.name, arg2: '1', text: `${t} = ${node.name} ${baseOp} 1` });
+                this.instructions.push({ op: '=', target: node.name, arg1: t, text: `${node.name} = ${t}` });
+                break;
+            }
+            case 'PrintfStatement':
                 if (node.args) {
                     for (const arg of node.args) {
                         const a = this._genExpr(arg);
@@ -1890,12 +1910,12 @@ class IRGenerator {
                     this.instructions.push({ op: 'CALL', target: 'printf', text: `call printf, ${node.args.length}` });
                 }
                 break;
-            case 'RETURN':
+            case 'ReturnStatement':
                 let r = '0';
                 if (node.value) r = this._genExpr(node.value);
                 this.instructions.push({ op: 'RETURN', arg1: r, text: `return ${r}` });
                 break;
-            case 'FOR':
+            case 'ForStatement':
                 if (node.init) this._genStmt(node.init);
                 const loopStart = this._newLabel();
                 const loopEnd = this._newLabel();
@@ -1911,7 +1931,7 @@ class IRGenerator {
                 this.instructions.push({ op: 'GOTO', target: loopStart, text: `goto ${loopStart}` });
                 this.instructions.push({ op: 'LABEL', target: loopEnd, text: `${loopEnd}:` });
                 break;
-            case 'WHILE':
+            case 'WhileStatement':
                 const wStart = this._newLabel();
                 const wEnd = this._newLabel();
                 this.instructions.push({ op: 'LABEL', target: wStart, text: `${wStart}:` });
@@ -1925,23 +1945,22 @@ class IRGenerator {
                 this.instructions.push({ op: 'GOTO', target: wStart, text: `goto ${wStart}` });
                 this.instructions.push({ op: 'LABEL', target: wEnd, text: `${wEnd}:` });
                 break;
-            case 'IF':
+            case 'IfStatement':
                 const elseLabel = this._newLabel();
                 const endIf = this._newLabel();
                 const ifCond = this._genExpr(node.condition);
                 this.instructions.push({ op: 'IF_FALSE', arg1: ifCond, target: elseLabel, text: `if_false ${ifCond} goto ${elseLabel}` });
-                if (node.thenBranch) {
-                    for (const s of node.thenBranch) this._genStmt(s);
+                if (node.consequent) {
+                    for (const s of node.consequent) this._genStmt(s);
                 }
                 this.instructions.push({ op: 'GOTO', target: endIf, text: `goto ${endIf}` });
                 this.instructions.push({ op: 'LABEL', target: elseLabel, text: `${elseLabel}:` });
-                if (node.elseBranch) {
-                    for (const s of node.elseBranch) this._genStmt(s);
+                if (node.alternate) {
+                    for (const s of node.alternate) this._genStmt(s);
                 }
                 this.instructions.push({ op: 'LABEL', target: endIf, text: `${endIf}:` });
                 break;
-            case 'EXPR_STMT':
-                if (node.expression) this._genExpr(node.expression);
+            default:
                 break;
         }
     }
@@ -1950,19 +1969,21 @@ class IRGenerator {
         if (!node) return '0';
         if (typeof node === 'number' || typeof node === 'string') return String(node);
         switch (node.type) {
-            case 'LITERAL':
-                return typeof node.value === 'string' ? `"${node.value}"` : String(node.value);
-            case 'IDENTIFIER':
+            case 'NumberLiteral':
+                return String(node.value);
+            case 'StringLiteral':
+                return `"${node.value}"`;
+            case 'Identifier':
                 return node.name;
-            case 'BINARY_EXPR':
-            case 'LOGICAL_EXPR': {
+            case 'BinaryExpression':
+            case 'LogicalExpression': {
                 const left = this._genExpr(node.left);
                 const right = this._genExpr(node.right);
                 const t = this._newTemp();
                 this.instructions.push({ op: node.operator, target: t, arg1: left, arg2: right, text: `${t} = ${left} ${node.operator} ${right}` });
                 return t;
             }
-            case 'UNARY_EXPR': {
+            case 'UnaryExpression': {
                 const arg = this._genExpr(node.operand);
                 const t = this._newTemp();
                 this.instructions.push({ op: node.operator, target: t, arg1: arg, text: `${t} = ${node.operator}${arg}` });
