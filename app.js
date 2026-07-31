@@ -412,12 +412,15 @@ int main() {
     // Register Display (32-bit, 8 registers)
     // ════════════════════════════════════════════════════════════════════
 
+    let regFormatHex = true;
+
     function fmtReg32(val) {
-        // Display as 8-digit hex for 32-bit
+        if (!regFormatHex) return String(val >>> 0);
         return ((val >>> 0)).toString(16).toUpperCase().padStart(8, '0');
     }
 
     function fmtAddr(val) {
+        if (!regFormatHex) return String(val & 0xFFFF);
         return (val & 0xFFFF).toString(16).toUpperCase().padStart(3, '0');
     }
 
@@ -461,6 +464,12 @@ int main() {
     function renderTokens(tokens) {
         if (!tokenPanel) return;
         tokenPanel.innerHTML = '';
+
+        const badge = $('#token-count-badge');
+        if (badge) {
+            const count = tokens.filter(tok => tok.type !== 'EOF').length;
+            badge.textContent = `${count} token${count !== 1 ? 's' : ''}`;
+        }
 
         for (const tok of tokens) {
             if (tok.type === 'EOF') continue;
@@ -709,6 +718,8 @@ int main() {
     // Bytecode Display
     // ════════════════════════════════════════════════════════════════════
 
+    let bytecodeFormatHex = true;
+
     function renderBytecode(bytes) {
         if (!bytecodePanel) return;
         bytecodePanel.innerHTML = '';
@@ -719,7 +730,9 @@ int main() {
         for (let i = 0; i < bytes.length; i++) {
             const cell = document.createElement('span');
             cell.className = 'bytecode-byte';
-            cell.textContent = bytes[i].toString(16).toUpperCase().padStart(2, '0');
+            cell.textContent = bytecodeFormatHex ?
+                bytes[i].toString(16).toUpperCase().padStart(2, '0') :
+                bytes[i].toString(10);
             cell.title = `Offset 0x${i.toString(16).toUpperCase().padStart(3, '0')}: ${bytes[i]} (0b${bytes[i].toString(2).padStart(8, '0')})`;
             cell.dataset.offset = i;
             grid.appendChild(cell);
@@ -729,7 +742,7 @@ int main() {
 
         const summary = document.createElement('div');
         summary.className = 'bytecode-summary';
-        summary.textContent = `${bytes.length} bytes`;
+        summary.textContent = `${bytes.length} bytes (${bytecodeFormatHex ? 'Hexadecimal' : 'Decimal'} view)`;
         bytecodePanel.appendChild(summary);
     }
 
@@ -1034,15 +1047,74 @@ int main() {
     }
 
     // ════════════════════════════════════════════════════════════════════
+    // Stage Helper & Utility Functions
+    // ════════════════════════════════════════════════════════════════════
+
+    function copyTextWithFeedback(text, btnEl) {
+        if (!text) return;
+        const originalHtml = btnEl ? btnEl.innerHTML : '';
+        navigator.clipboard.writeText(text).then(() => {
+            if (btnEl) {
+                btnEl.textContent = '✓ Copied!';
+                setTimeout(() => { btnEl.innerHTML = originalHtml; }, 1400);
+            }
+        }).catch(err => {
+            console.error('Clipboard copy error:', err);
+        });
+    }
+
+    let astExpanded = true;
+    function setASTExpanded(expanded) {
+        astExpanded = expanded;
+        if (!astPanel) return;
+        const subNodes = astPanel.querySelectorAll('.ast-node .ast-node');
+        subNodes.forEach(node => {
+            node.style.display = expanded ? 'block' : 'none';
+        });
+    }
+
+    function scrollToMemAddr(addr) {
+        if (!memoryGrid) return;
+        const cell = memoryCells[addr];
+        if (cell) {
+            cell.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            flashMemoryCell(addr, 'mem-pc');
+        }
+    }
+
+    function downloadBinary() {
+        if (!compiledData || !compiledData.bytecode) return;
+        const blob = new Blob([new Uint8Array(compiledData.bytecode)], { type: 'application/octet-stream' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'program.bin';
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    function exportTraceLog() {
+        if (!cpu.trace || cpu.trace.length === 0) return;
+        const text = cpu.trace.map(t => `#${t.cycle} [PC: 0x${t.pc.toString(16).padStart(3, '0')}] ${t.text} — ${t.description}`).join('\n');
+        const blob = new Blob([text], { type: 'text/plain' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'execution_trace.txt';
+        a.click();
+        URL.revokeObjectURL(url);
+    }
+
+    // ════════════════════════════════════════════════════════════════════
     // Button States
     // ════════════════════════════════════════════════════════════════════
 
     function setButtonStates(isRunning) {
-        if (btnRun) btnRun.disabled = isRunning;
-        if (btnStep) btnStep.disabled = isRunning;
-        if (btnPause) btnPause.disabled = !isRunning;
-        if (btnFast) btnFast.disabled = isRunning;
-        if (btnCompile) btnCompile.disabled = isRunning;
+        $$('.btn-run-action').forEach(el => el.disabled = isRunning);
+        $$('.btn-step-action').forEach(el => el.disabled = isRunning);
+        $$('.btn-pause-action').forEach(el => el.disabled = !isRunning);
+        $$('.btn-fast-action').forEach(el => el.disabled = isRunning);
+        $$('.btn-compile-action').forEach(el => el.disabled = isRunning);
     }
 
     // ════════════════════════════════════════════════════════════════════
@@ -1062,12 +1134,143 @@ int main() {
     // ════════════════════════════════════════════════════════════════════
 
     function attachEventHandlers() {
-        if (btnCompile) btnCompile.addEventListener('click', doCompile);
-        if (btnRun)     btnRun.addEventListener('click', doRun);
-        if (btnStep)    btnStep.addEventListener('click', doStep);
-        if (btnPause)   btnPause.addEventListener('click', doPause);
-        if (btnReset)   btnReset.addEventListener('click', doReset);
-        if (btnFast)    btnFast.addEventListener('click', doFastRun);
+        // Multi-instance buttons (Header & Stage 6 Assembly bar)
+        $$('.btn-compile-action').forEach(el => el.addEventListener('click', doCompile));
+        $$('.btn-run-action').forEach(el => el.addEventListener('click', doRun));
+        $$('.btn-step-action').forEach(el => el.addEventListener('click', doStep));
+        $$('.btn-pause-action').forEach(el => el.addEventListener('click', doPause));
+        $$('.btn-reset-action').forEach(el => el.addEventListener('click', doReset));
+        $$('.btn-fast-action').forEach(el => el.addEventListener('click', doFastRun));
+
+        // Stage 1 Source Code Actions
+        const btnCopySource = $('#btn-copy-source');
+        if (btnCopySource) {
+            btnCopySource.addEventListener('click', () => {
+                copyTextWithFeedback(editorArea ? editorArea.value : '', btnCopySource);
+            });
+        }
+        const btnClearSource = $('#btn-clear-source');
+        if (btnClearSource) {
+            btnClearSource.addEventListener('click', () => {
+                if (editorArea) {
+                    editorArea.value = '';
+                    updateSyntaxHighlighting();
+                }
+            });
+        }
+
+        // Stage 2 Token Actions
+        const btnCopyTokens = $('#btn-copy-tokens');
+        if (btnCopyTokens) {
+            btnCopyTokens.addEventListener('click', () => {
+                if (!compiledData || !compiledData.tokens) return;
+                const tokStr = compiledData.tokens.map(t => `[${t.type}] ${t.value || t.raw}`).join(' ');
+                copyTextWithFeedback(tokStr, btnCopyTokens);
+            });
+        }
+
+        // Stage 3 AST Actions
+        const btnAstExpand = $('#btn-ast-expand');
+        if (btnAstExpand) btnAstExpand.addEventListener('click', () => setASTExpanded(true));
+        const btnAstCollapse = $('#btn-ast-collapse');
+        if (btnAstCollapse) btnAstCollapse.addEventListener('click', () => setASTExpanded(false));
+        const btnCopyAst = $('#btn-copy-ast');
+        if (btnCopyAst) {
+            btnCopyAst.addEventListener('click', () => {
+                copyTextWithFeedback(astPanel ? astPanel.innerText : '', btnCopyAst);
+            });
+        }
+
+        // Stage 4 Machine Code Actions
+        const btnBytecodeFormat = $('#btn-bytecode-hex-dec');
+        if (btnBytecodeFormat) {
+            btnBytecodeFormat.addEventListener('click', () => {
+                bytecodeFormatHex = !bytecodeFormatHex;
+                if (compiledData && compiledData.bytecode) {
+                    renderBytecode(compiledData.bytecode);
+                }
+            });
+        }
+        const btnCopyBytecode = $('#btn-copy-bytecode');
+        if (btnCopyBytecode) {
+            btnCopyBytecode.addEventListener('click', () => {
+                if (!compiledData || !compiledData.bytecode) return;
+                const bytesStr = compiledData.bytecode.map(b => b.toString(16).toUpperCase().padStart(2, '0')).join(' ');
+                copyTextWithFeedback(bytesStr, btnCopyBytecode);
+            });
+        }
+        const btnDownloadBin = $('#btn-download-bin');
+        if (btnDownloadBin) btnDownloadBin.addEventListener('click', downloadBinary);
+
+        // Stage 5 Memory Actions
+        const btnMemPC = $('#btn-mem-pc');
+        if (btnMemPC) btnMemPC.addEventListener('click', () => scrollToMemAddr(cpu.registers.pc));
+        const btnMemSP = $('#btn-mem-sp');
+        if (btnMemSP) btnMemSP.addEventListener('click', () => scrollToMemAddr(cpu.registers.sp));
+        const btnClearMem = $('#btn-clear-mem');
+        if (btnClearMem) {
+            btnClearMem.addEventListener('click', () => {
+                cpu.memory.reset();
+                updateMemoryGrid();
+                appendConsole('Memory zeroed.', 'info');
+            });
+        }
+
+        // Stage 6 Assembly Actions
+        const btnCopyAsm = $('#btn-copy-asm');
+        if (btnCopyAsm) {
+            btnCopyAsm.addEventListener('click', () => {
+                if (!compiledData || !compiledData.listing) return;
+                const asmStr = compiledData.listing.map(e => `0x${e.address.toString(16).toUpperCase().padStart(3, '0')}:  ${e.text}`).join('\n');
+                copyTextWithFeedback(asmStr, btnCopyAsm);
+            });
+        }
+
+        // Stage 7 CPU State Actions
+        const btnCpuFormat = $('#btn-cpu-format');
+        if (btnCpuFormat) {
+            btnCpuFormat.addEventListener('click', () => {
+                regFormatHex = !regFormatHex;
+                updateRegisters();
+            });
+        }
+        const btnCpuResetRegs = $('#btn-cpu-reset-regs');
+        if (btnCpuResetRegs) {
+            btnCpuResetRegs.addEventListener('click', () => {
+                for (let i = 0; i < 8; i++) cpu.registers.set(i, 0);
+                cpu.registers.pc = 0;
+                cpu.registers.sp = 0xFFC;
+                cpu.flags.zero = 0;
+                cpu.flags.negative = 0;
+                cpu.flags.carry = 0;
+                cpu.flags.overflow = 0;
+                updateRegisters();
+                updateFlags();
+                highlightCurrentInstruction();
+                appendConsole('CPU Registers reset.', 'info');
+            });
+        }
+
+        // Stage 8 Console Actions
+        const btnClearConsole = $('#btn-clear-console');
+        if (btnClearConsole) btnClearConsole.addEventListener('click', clearConsole);
+        const btnCopyConsole = $('#btn-copy-console');
+        if (btnCopyConsole) {
+            btnCopyConsole.addEventListener('click', () => {
+                copyTextWithFeedback(consolePanel ? consolePanel.innerText : '', btnCopyConsole);
+            });
+        }
+
+        // Stage 9 Trace Actions
+        const btnClearTrace = $('#btn-clear-trace');
+        if (btnClearTrace) {
+            btnClearTrace.addEventListener('click', () => {
+                cpu.trace = [];
+                updateTrace();
+            });
+        }
+        const btnExportTrace = $('#btn-export-trace');
+        if (btnExportTrace) btnExportTrace.addEventListener('click', exportTraceLog);
 
         if (speedSlider) {
             speedSlider.addEventListener('input', () => {

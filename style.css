@@ -380,6 +380,7 @@ select:focus { border-color: var(--accent-amber); }
     padding: var(--space-lg) var(--space-xl);
     background: var(--bg-secondary);
     border-bottom: 1px solid var(--border-subtle);
+    flex-wrap: wrap;
 }
 
 .stage-number {
@@ -395,6 +396,7 @@ select:focus { border-color: var(--accent-amber); }
 
 .stage-info {
     flex: 1;
+    min-width: 220px;
 }
 
 .stage-title {
@@ -420,6 +422,36 @@ select:focus { border-color: var(--accent-amber); }
     padding: 1px 5px;
     border-radius: 3px;
     font-size: 11px;
+}
+
+.stage-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    margin-left: auto;
+    flex-wrap: wrap;
+}
+
+.stage-btn-group {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    background: rgba(0, 0, 0, 0.25);
+    padding: 3px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-subtle);
+}
+
+.stage-badge {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 3px 8px;
+    background: rgba(200, 80, 192, 0.12);
+    color: var(--accent-magenta);
+    border: 1px solid rgba(200, 80, 192, 0.25);
+    border-radius: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .stage-dot {

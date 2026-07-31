@@ -25,24 +25,20 @@
             </div>
 
             <div class="controls">
-                <button id="btn-compile" class="btn btn-primary" title="Compile (Ctrl+Enter)">
-                    ⚡ Compile
-                </button>
-                <div class="toolbar-sep"></div>
-                <button id="btn-run" class="btn btn-run" title="Run (F5)">
+                <button class="btn btn-run btn-run-action" title="Run (F5)">
                     ▶ Run
                 </button>
-                <button id="btn-step" class="btn" title="Step (F10)">
+                <button class="btn btn-step-action" title="Step (F10)">
                     ⏭ Step
                 </button>
-                <button id="btn-pause" class="btn" disabled title="Pause (Esc)">
+                <button class="btn btn-pause-action" disabled title="Pause (Esc)">
                     ⏸ Pause
                 </button>
-                <button id="btn-fast" class="btn" title="Run to end (instant)">
+                <button class="btn btn-fast-action" title="Run to end (instant)">
                     ⏩ Fast
                 </button>
                 <div class="toolbar-sep"></div>
-                <button id="btn-reset" class="btn btn-danger" title="Reset">
+                <button class="btn btn-danger btn-reset-action" title="Reset">
                     ↺ Reset
                 </button>
             </div>
@@ -72,6 +68,17 @@
                         <h2 class="stage-title">Source Code</h2>
                         <p class="stage-desc">Write your program in C. Supports <code>main()</code>, <code>printf()</code>, <code>for</code>/<code>while</code> loops, <code>if</code>/<code>else</code>, <code>return</code>, and arithmetic.</p>
                     </div>
+                    <div class="stage-actions">
+                        <button id="btn-compile" class="btn btn-primary btn-compile-action" title="Compile C Code (Ctrl+Enter)">
+                            ⚡ Compile
+                        </button>
+                        <button id="btn-copy-source" class="btn" title="Copy Source Code">
+                            📋 Copy
+                        </button>
+                        <button id="btn-clear-source" class="btn" title="Clear Code">
+                            🧹 Clear
+                        </button>
+                    </div>
                     <div class="stage-dot dot-amber"></div>
                 </div>
                 <div class="stage-body">
@@ -100,6 +107,12 @@
                         <h2 class="stage-title">Tokens</h2>
                         <p class="stage-desc">The lexer scans characters and groups them into meaningful tokens — keywords, identifiers, operators, strings, numbers, and delimiters.</p>
                     </div>
+                    <div class="stage-actions">
+                        <span id="token-count-badge" class="stage-badge">0 tokens</span>
+                        <button id="btn-copy-tokens" class="btn" title="Copy Token Stream">
+                            📋 Copy Tokens
+                        </button>
+                    </div>
                     <div class="stage-dot dot-magenta"></div>
                 </div>
                 <div class="stage-body">
@@ -121,6 +134,17 @@
                         <h2 class="stage-title">Abstract Syntax Tree</h2>
                         <p class="stage-desc">The parser builds a hierarchical tree capturing the program's structure — functions, statements, expressions, and control flow.</p>
                     </div>
+                    <div class="stage-actions">
+                        <button id="btn-ast-expand" class="btn" title="Expand Tree Nodes">
+                            📂 Expand
+                        </button>
+                        <button id="btn-ast-collapse" class="btn" title="Collapse Tree Nodes">
+                            📁 Collapse
+                        </button>
+                        <button id="btn-copy-ast" class="btn" title="Copy AST Tree">
+                            📋 Copy AST
+                        </button>
+                    </div>
                     <div class="stage-dot dot-cyan"></div>
                 </div>
                 <div class="stage-body">
@@ -140,7 +164,18 @@
                     <div class="stage-number">04</div>
                     <div class="stage-info">
                         <h2 class="stage-title">Machine Code</h2>
-                        <p class="stage-desc">The assembler resolves labels and encodes each instruction into raw bytes — the only thing the 32-bit CPU understands.</p>
+                        <p class="stage-desc">The assembler resolves labels and encodes each instruction into raw bytes — binary opcodes executed by hardware.</p>
+                    </div>
+                    <div class="stage-actions">
+                        <button id="btn-bytecode-hex-dec" class="btn" title="Toggle Hexadecimal / Decimal view">
+                            🔢 Hex/Dec
+                        </button>
+                        <button id="btn-copy-bytecode" class="btn" title="Copy Machine Code Bytes">
+                            📋 Copy Bytes
+                        </button>
+                        <button id="btn-download-bin" class="btn" title="Download Machine Code Binary">
+                            💾 Download .bin
+                        </button>
                     </div>
                     <div class="stage-dot dot-purple"></div>
                 </div>
@@ -163,6 +198,17 @@
                         <h2 class="stage-title">Memory</h2>
                         <p class="stage-desc">4 KB of byte-addressable memory. Code lives at 0x000, data segment at 0x800, and the stack grows downward from 0xFFC. 32-bit words stored little-endian.</p>
                     </div>
+                    <div class="stage-actions">
+                        <button id="btn-mem-pc" class="btn" title="Jump to Program Counter in Memory">
+                            🎯 Jump to PC
+                        </button>
+                        <button id="btn-mem-sp" class="btn" title="Jump to Stack Pointer in Memory">
+                            🎯 Jump to SP
+                        </button>
+                        <button id="btn-clear-mem" class="btn btn-danger" title="Zero Memory Contents">
+                            🧹 Clear Memory
+                        </button>
+                    </div>
                     <div class="stage-dot dot-purple"></div>
                 </div>
                 <div class="stage-body">
@@ -181,15 +227,25 @@
                 <div class="connector-arrow">▼</div>
             </div>
 
-            <!-- ── Stages 6 & 7: Assembly & CPU State (Side-by-Side) ────── -->
+            <!-- ── Stages 06 & 07: Assembly Code & CPU State (Side-by-Side) ────── -->
             <div class="stage-row">
-                <!-- ── Stage 6: Assembly ───────────────────────────────── -->
+                <!-- ── Stage 06: Assembly Code ─────────────────────────── -->
                 <section class="stage" id="stage-asm">
                     <div class="stage-header">
                         <div class="stage-number">06</div>
                         <div class="stage-info">
-                            <h2 class="stage-title">Assembly</h2>
-                            <p class="stage-desc">32-bit assembly instructions — tracked step-by-step with the Program Counter highlighting the current instruction.</p>
+                            <h2 class="stage-title">Assembly Code</h2>
+                            <p class="stage-desc">32-bit assembly instructions — tracked step-by-step with Program Counter highlighting during CPU execution.</p>
+                        </div>
+                        <div class="stage-actions">
+                            <div class="stage-btn-group">
+                                <button class="btn btn-run btn-run-action" title="Run (F5)">▶ Run</button>
+                                <button class="btn btn-step-action" title="Step (F10)">⏭ Step</button>
+                                <button class="btn btn-pause-action" disabled title="Pause (Esc)">⏸ Pause</button>
+                            </div>
+                            <button id="btn-copy-asm" class="btn" title="Copy Assembly Listing">
+                                📋 Copy ASM
+                            </button>
                         </div>
                         <div class="stage-dot dot-green"></div>
                     </div>
@@ -198,13 +254,21 @@
                     </div>
                 </section>
 
-                <!-- ── Stage 7: CPU State ──────────────────────────────── -->
+                <!-- ── Stage 07: CPU State ────────────────────────────── -->
                 <section class="stage" id="stage-cpu">
                     <div class="stage-header">
                         <div class="stage-number">07</div>
                         <div class="stage-info">
                             <h2 class="stage-title">CPU State</h2>
-                            <p class="stage-desc">The 32-bit processor's 8 general-purpose registers, flags, and program counter.</p>
+                            <p class="stage-desc">The 32-bit processor's 8 general-purpose registers, flags, program counter, and clock cycles.</p>
+                        </div>
+                        <div class="stage-actions">
+                            <button id="btn-cpu-format" class="btn" title="Toggle Register View (Hex / Decimal)">
+                                📊 Hex/Dec
+                            </button>
+                            <button id="btn-cpu-reset-regs" class="btn btn-danger" title="Zero Registers">
+                                ↺ Reset CPU
+                            </button>
                         </div>
                         <div class="stage-dot dot-blue"></div>
                     </div>
@@ -305,11 +369,6 @@
                 </section>
             </div>
 
-            <div class="pipeline-connector">
-                <div class="connector-line"></div>
-                <div class="connector-arrow">▼</div>
-            </div>
-
             <!-- ── Stage 8: Console Output ─────────────────────────── -->
             <section class="stage" id="stage-console">
                 <div class="stage-header">
@@ -317,6 +376,14 @@
                     <div class="stage-info">
                         <h2 class="stage-title">Console Output</h2>
                         <p class="stage-desc">Program output from <code>printf()</code> calls and system messages. Just like running your program in a terminal.</p>
+                    </div>
+                    <div class="stage-actions">
+                        <button id="btn-clear-console" class="btn" title="Clear Console Output">
+                            🧹 Clear Console
+                        </button>
+                        <button id="btn-copy-console" class="btn" title="Copy Output to Clipboard">
+                            📋 Copy Text
+                        </button>
                     </div>
                     <div class="stage-dot dot-green"></div>
                 </div>
@@ -337,6 +404,14 @@
                     <div class="stage-info">
                         <h2 class="stage-title">Execution Trace</h2>
                         <p class="stage-desc">A cycle-by-cycle log of every instruction the CPU executed — with program counter, opcode, and explanation.</p>
+                    </div>
+                    <div class="stage-actions">
+                        <button id="btn-clear-trace" class="btn" title="Clear Execution Trace">
+                            🧹 Clear Log
+                        </button>
+                        <button id="btn-export-trace" class="btn" title="Export Trace to Text File">
+                            📥 Export Log
+                        </button>
                     </div>
                     <div class="stage-dot dot-amber"></div>
                 </div>
