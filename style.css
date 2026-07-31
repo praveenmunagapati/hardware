@@ -424,6 +424,24 @@ select:focus { border-color: var(--accent-amber); }
     font-size: 11px;
 }
 
+.stage-feature-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 6px;
+}
+
+.stage-tag {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    padding: 2px 7px;
+    font-size: 11px;
+    font-family: var(--font-mono);
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
 .stage-actions {
     display: flex;
     align-items: center;
@@ -609,6 +627,24 @@ select:focus { border-color: var(--accent-amber); }
 
 #source-editor::placeholder {
     color: var(--text-muted);
+}
+
+/* Preprocessed Code View */
+.preprocessed-view {
+    margin: 0;
+    padding: var(--space-lg);
+    background: var(--bg-input);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-md);
+    min-height: 140px;
+    max-height: 380px;
+    overflow-y: auto;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.6;
+    color: var(--text-primary);
+    white-space: pre-wrap;
+    word-break: break-word;
 }
 
 /* Syntax Highlighting Tokens */

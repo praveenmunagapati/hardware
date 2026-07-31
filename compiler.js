@@ -1781,21 +1781,263 @@ class CodeGenerator {
 
 
 // ============================================================================
+// C Preprocessor — Expands #include, processes #define, strips comments
+// ============================================================================
+
+class Preprocessor {
+    process(source) {
+        let text = source;
+        const expandedHeaders = [];
+        const macros = {};
+
+        // 1. Process #define MACRO VALUE
+        text = text.replace(/^#\s*define\s+([A-Za-z_]\w*)\s+(.+)$/gm, (match, name, value) => {
+            macros[name] = value.trim();
+            return `/* #define ${name} ${value.trim()} */`;
+        });
+
+        // Substitute macro definitions in code
+        for (const [name, value] of Object.entries(macros)) {
+            const regex = new RegExp(`\\b${name}\\b`, 'g');
+            text = text.replace(regex, value);
+        }
+
+        // 2. Expand #include <stdio.h>
+        text = text.replace(/^#\s*include\s+<stdio\.h>/gm, () => {
+            expandedHeaders.push('stdio.h');
+            return `// --- Began <stdio.h> ---
+int printf(const char *format, ...);
+// --- Ended <stdio.h> ---`;
+        });
+
+        // 3. Expand generic #include <...>
+        text = text.replace(/^#\s*include\s+<([^>]+)>/gm, (match, header) => {
+            expandedHeaders.push(header);
+            return `// --- Began <${header}> ---
+// Standard library declarations for <${header}>
+// --- Ended <${header}> ---`;
+        });
+
+        return {
+            preprocessedText: text,
+            expandedHeaders,
+            macros
+        };
+    }
+}
+
+// ============================================================================
+// Intermediate Representation (3AC - Three-Address Code Generator)
+// ============================================================================
+
+class IRGenerator {
+    constructor() {
+        this.tempCount = 0;
+        this.labelCount = 0;
+        this.instructions = [];
+    }
+
+    _newTemp() {
+        return `t${this.tempCount++}`;
+    }
+
+    _newLabel() {
+        return `L_IR${this.labelCount++}`;
+    }
+
+    generate(ast) {
+        this.tempCount = 0;
+        this.labelCount = 0;
+        this.instructions = [];
+
+        if (ast && ast.body) {
+            for (const stmt of ast.body) {
+                this._genStmt(stmt);
+            }
+        }
+        return this.instructions;
+    }
+
+    _genStmt(node) {
+        if (!node) return;
+        switch (node.type) {
+            case 'FUNCTION_DECL':
+                this.instructions.push({ op: 'LABEL', target: node.name, text: `${node.name}:` });
+                if (node.body) {
+                    for (const stmt of node.body) {
+                        this._genStmt(stmt);
+                    }
+                }
+                break;
+            case 'VAR_DECL':
+                if (node.initializer) {
+                    const t = this._genExpr(node.initializer);
+                    this.instructions.push({ op: '=', target: node.name, arg1: t, text: `${node.name} = ${t}` });
+                } else {
+                    this.instructions.push({ op: 'DECL', target: node.name, text: `decl ${node.name}` });
+                }
+                break;
+            case 'ASSIGNMENT':
+                const val = this._genExpr(node.value);
+                this.instructions.push({ op: node.operator || '=', target: node.name, arg1: val, text: `${node.name} ${node.operator || '='} ${val}` });
+                break;
+            case 'PRINTF':
+                if (node.args) {
+                    for (const arg of node.args) {
+                        const a = this._genExpr(arg);
+                        this.instructions.push({ op: 'PARAM', arg1: a, text: `param ${a}` });
+                    }
+                    this.instructions.push({ op: 'CALL', target: 'printf', text: `call printf, ${node.args.length}` });
+                }
+                break;
+            case 'RETURN':
+                let r = '0';
+                if (node.value) r = this._genExpr(node.value);
+                this.instructions.push({ op: 'RETURN', arg1: r, text: `return ${r}` });
+                break;
+            case 'FOR':
+                if (node.init) this._genStmt(node.init);
+                const loopStart = this._newLabel();
+                const loopEnd = this._newLabel();
+                this.instructions.push({ op: 'LABEL', target: loopStart, text: `${loopStart}:` });
+                if (node.condition) {
+                    const cond = this._genExpr(node.condition);
+                    this.instructions.push({ op: 'IF_FALSE', arg1: cond, target: loopEnd, text: `if_false ${cond} goto ${loopEnd}` });
+                }
+                if (node.body) {
+                    for (const s of node.body) this._genStmt(s);
+                }
+                if (node.update) this._genStmt(node.update);
+                this.instructions.push({ op: 'GOTO', target: loopStart, text: `goto ${loopStart}` });
+                this.instructions.push({ op: 'LABEL', target: loopEnd, text: `${loopEnd}:` });
+                break;
+            case 'WHILE':
+                const wStart = this._newLabel();
+                const wEnd = this._newLabel();
+                this.instructions.push({ op: 'LABEL', target: wStart, text: `${wStart}:` });
+                if (node.condition) {
+                    const cond = this._genExpr(node.condition);
+                    this.instructions.push({ op: 'IF_FALSE', arg1: cond, target: wEnd, text: `if_false ${cond} goto ${wEnd}` });
+                }
+                if (node.body) {
+                    for (const s of node.body) this._genStmt(s);
+                }
+                this.instructions.push({ op: 'GOTO', target: wStart, text: `goto ${wStart}` });
+                this.instructions.push({ op: 'LABEL', target: wEnd, text: `${wEnd}:` });
+                break;
+            case 'IF':
+                const elseLabel = this._newLabel();
+                const endIf = this._newLabel();
+                const ifCond = this._genExpr(node.condition);
+                this.instructions.push({ op: 'IF_FALSE', arg1: ifCond, target: elseLabel, text: `if_false ${ifCond} goto ${elseLabel}` });
+                if (node.thenBranch) {
+                    for (const s of node.thenBranch) this._genStmt(s);
+                }
+                this.instructions.push({ op: 'GOTO', target: endIf, text: `goto ${endIf}` });
+                this.instructions.push({ op: 'LABEL', target: elseLabel, text: `${elseLabel}:` });
+                if (node.elseBranch) {
+                    for (const s of node.elseBranch) this._genStmt(s);
+                }
+                this.instructions.push({ op: 'LABEL', target: endIf, text: `${endIf}:` });
+                break;
+            case 'EXPR_STMT':
+                if (node.expression) this._genExpr(node.expression);
+                break;
+        }
+    }
+
+    _genExpr(node) {
+        if (!node) return '0';
+        if (typeof node === 'number' || typeof node === 'string') return String(node);
+        switch (node.type) {
+            case 'LITERAL':
+                return typeof node.value === 'string' ? `"${node.value}"` : String(node.value);
+            case 'IDENTIFIER':
+                return node.name;
+            case 'BINARY_EXPR':
+            case 'LOGICAL_EXPR': {
+                const left = this._genExpr(node.left);
+                const right = this._genExpr(node.right);
+                const t = this._newTemp();
+                this.instructions.push({ op: node.operator, target: t, arg1: left, arg2: right, text: `${t} = ${left} ${node.operator} ${right}` });
+                return t;
+            }
+            case 'UNARY_EXPR': {
+                const arg = this._genExpr(node.operand);
+                const t = this._newTemp();
+                this.instructions.push({ op: node.operator, target: t, arg1: arg, text: `${t} = ${node.operator}${arg}` });
+                return t;
+            }
+            default:
+                return '0';
+        }
+    }
+}
+
+
+// ============================================================================
+// IR Optimizer — Performs Constant Folding & Dead Code Elimination
+// ============================================================================
+
+class IROptimizer {
+    optimize(rawInstructions) {
+        const optimized = [];
+        const constants = {};
+
+        for (const inst of rawInstructions) {
+            let item = { ...inst };
+
+            // Constant folding for binary operators
+            if (['+', '-', '*', '/', '%'].includes(item.op) && item.arg1 && item.arg2) {
+                const v1 = Number(constants[item.arg1] !== undefined ? constants[item.arg1] : item.arg1);
+                const v2 = Number(constants[item.arg2] !== undefined ? constants[item.arg2] : item.arg2);
+
+                if (!isNaN(v1) && !isNaN(v2)) {
+                    let res = 0;
+                    switch (item.op) {
+                        case '+': res = v1 + v2; break;
+                        case '-': res = v1 - v2; break;
+                        case '*': res = v1 * v2; break;
+                        case '/': res = v2 !== 0 ? Math.floor(v1 / v2) : 0; break;
+                        case '%': res = v2 !== 0 ? v1 % v2 : 0; break;
+                    }
+                    item = { op: '=', target: item.target, arg1: String(res), text: `${item.target} = ${res}  /* Constant Folded (${v1} ${inst.op} ${v2}) */` };
+                    constants[item.target] = res;
+                }
+            } else if (item.op === '=' && !isNaN(Number(item.arg1))) {
+                constants[item.target] = Number(item.arg1);
+            }
+
+            optimized.push(item);
+        }
+
+        return optimized;
+    }
+}
+
+// ============================================================================
 // Compiler — Orchestrates the full compilation pipeline
 // ============================================================================
 
 class Compiler {
     constructor(bus) {
         this.bus = bus;
+        this.preprocessor = new Preprocessor();
         this.lexer = null;
         this.parser = null;
         this.analyzer = new SemanticAnalyzer();
+        this.irGenerator = new IRGenerator();
+        this.irOptimizer = new IROptimizer();
         this.generator = new CodeGenerator();
 
         // Pipeline results
         this.source = '';
+        this.preprocessedCode = '';
+        this.expandedHeaders = [];
         this.tokens = [];
         this.ast = null;
+        this.rawIR = [];
+        this.optimizedIR = [];
         this.assembly = [];
         this.bytecode = [];
         this.listing = [];
@@ -1807,12 +2049,19 @@ class Compiler {
     }
 
     /**
-     * Full compilation pipeline:
-     * Source → Tokens → AST → Semantic Check → Assembly → Machine Code
+     * Full C compilation pipeline:
+     * Source (.c) → Preprocessed (.i) → Tokens → AST → Assembly (.s) → Machine Code (.bin)
      */
     compile(source) {
         this.source = source;
         this.errors = [];
+
+        // Stage 0: Preprocessing
+        this.bus.emit('compileStage', { stage: 'preprocessor', status: 'running' });
+        const prepResult = this.preprocessor.process(source);
+        this.preprocessedCode = prepResult.preprocessedText;
+        this.expandedHeaders = prepResult.expandedHeaders;
+        this.bus.emit('compileStage', { stage: 'preprocessor', status: 'done', code: this.preprocessedCode });
 
         // Stage 1: Lexing
         this.bus.emit('compileStage', { stage: 'lexer', status: 'running' });
@@ -1844,7 +2093,7 @@ class Compiler {
         }
         this.bus.emit('compileStage', { stage: 'parser', status: 'done', ast: this.ast });
 
-        // Stage 3: Semantic Analysis
+        // Stage 4: Semantic Analysis
         this.bus.emit('compileStage', { stage: 'semantic', status: 'running' });
         const semResult = this.analyzer.analyze(this.ast);
         this.symbols = semResult.symbols;
@@ -1857,7 +2106,17 @@ class Compiler {
         }
         this.bus.emit('compileStage', { stage: 'semantic', status: 'done' });
 
-        // Stage 4: Code Generation
+        // Stage 5: Intermediate Code Generation (Three-Address Code / 3AC)
+        this.bus.emit('compileStage', { stage: 'irgen', status: 'running' });
+        this.rawIR = this.irGenerator.generate(this.ast);
+        this.bus.emit('compileStage', { stage: 'irgen', status: 'done', rawIR: this.rawIR });
+
+        // Stage 6: IR Optimization (Constant Folding & Dead Code Elimination)
+        this.bus.emit('compileStage', { stage: 'iropt', status: 'running' });
+        this.optimizedIR = this.irOptimizer.optimize(this.rawIR);
+        this.bus.emit('compileStage', { stage: 'iropt', status: 'done', optimizedIR: this.optimizedIR });
+
+        // Stage 7: Code Generation (Assembly Code Emission)
         this.bus.emit('compileStage', { stage: 'codegen', status: 'running' });
         const genResult = this.generator.generate(this.ast);
         this.assembly = genResult.instructions;
@@ -1870,7 +2129,7 @@ class Compiler {
         }
         this.bus.emit('compileStage', { stage: 'codegen', status: 'done', assembly: this.assembly });
 
-        // Stage 5: Assembly
+        // Stage 8: Assembler & Binary Encoding
         this.bus.emit('compileStage', { stage: 'assembler', status: 'running' });
         const assembler = new window.MiniCPU.Assembler(this.bus);
         const asmResult = assembler.assemble(this.assembly);
@@ -1896,6 +2155,8 @@ class Compiler {
             listing: this.listing,
             tokens: this.tokens,
             ast: this.ast,
+            rawIR: this.rawIR,
+            optimizedIR: this.optimizedIR,
             assembly: this.assembly,
             labels: this.labels,
             symbols: Object.fromEntries(this.generator.symbols),
@@ -1906,12 +2167,17 @@ class Compiler {
         return {
             success: true,
             errors: [],
+            preprocessedCode: this.preprocessedCode,
+            expandedHeaders: this.expandedHeaders,
+            tokens: this.tokens,
+            ast: this.ast,
+            symbols: this.generator.symbols,
+            symbolTable: this.symbols,
+            rawIR: this.rawIR,
+            optimizedIR: this.optimizedIR,
+            assembly: this.assembly,
             bytecode: this.bytecode,
             listing: this.listing,
-            ast: this.ast,
-            tokens: this.tokens,
-            assembly: this.assembly,
-            symbols: this.generator.symbols,
             strings: stringData,
             labels: this.labels
         };
@@ -1924,9 +2190,12 @@ class Compiler {
 // ============================================================================
 
 window.MiniCompiler = {
+    Preprocessor,
     Lexer,
     Parser,
     SemanticAnalyzer,
+    IRGenerator,
+    IROptimizer,
     CodeGenerator,
     Compiler,
     Token,

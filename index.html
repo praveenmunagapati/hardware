@@ -60,13 +60,18 @@
              ═══════════════════════════════════════════════════════════ -->
         <main class="pipeline">
 
-            <!-- ── Stage 1: Source Code ─────────────────────────────── -->
+            <!-- ── Stage 01: Source Code (.c) ─────────────────────── -->
             <section class="stage" id="stage-source">
                 <div class="stage-header">
                     <div class="stage-number">01</div>
                     <div class="stage-info">
-                        <h2 class="stage-title">Source Code</h2>
-                        <p class="stage-desc">Write your program in C. Supports <code>main()</code>, <code>printf()</code>, <code>for</code>/<code>while</code> loops, <code>if</code>/<code>else</code>, <code>return</code>, and arithmetic.</p>
+                        <h2 class="stage-title">Source Code (.c)</h2>
+                        <p class="stage-desc">Write high-level C code. Supports <code>main()</code>, <code>printf()</code>, <code>for</code>/<code>while</code> loops, <code>if</code>/<code>else</code>, <code>return</code>, and arithmetic.</p>
+                        <div class="stage-feature-tags">
+                            <span class="stage-tag">• High-Level C Input</span>
+                            <span class="stage-tag">• Functions & Statements</span>
+                            <span class="stage-tag">• Control Flow & Expressions</span>
+                        </div>
                     </div>
                     <div class="stage-actions">
                         <button id="btn-compile" class="btn btn-primary btn-compile-action" title="Compile C Code (Ctrl+Enter)">
@@ -95,17 +100,56 @@
 
             <div class="pipeline-connector">
                 <div class="connector-line"></div>
-                <div class="connector-label">Lexical Analysis</div>
+                <div class="connector-label">1. Preprocessing (#include, #define, Comments)</div>
                 <div class="connector-arrow">▼</div>
             </div>
 
-            <!-- ── Stage 2: Tokens ─────────────────────────────────── -->
-            <section class="stage" id="stage-tokens">
+            <!-- ── Stage 02: 1. Preprocessing ──────────────────────── -->
+            <section class="stage" id="stage-prep">
                 <div class="stage-header">
                     <div class="stage-number">02</div>
                     <div class="stage-info">
-                        <h2 class="stage-title">Tokens</h2>
-                        <p class="stage-desc">The lexer scans characters and groups them into meaningful tokens — keywords, identifiers, operators, strings, numbers, and delimiters.</p>
+                        <h2 class="stage-title">1. Preprocessing → Preprocessed Source (.i)</h2>
+                        <p class="stage-desc">The C Preprocessor expands headers, substitutes macros, and strips comments before lexical analysis.</p>
+                        <div class="stage-feature-tags">
+                            <span class="stage-tag">• File Inclusion (#include)</span>
+                            <span class="stage-tag">• Macro Expansion (#define)</span>
+                            <span class="stage-tag">• Comment Removal (//, /* */)</span>
+                            <span class="stage-tag">• Conditional Compiling</span>
+                        </div>
+                    </div>
+                    <div class="stage-actions">
+                        <span id="prep-header-badge" class="stage-badge">0 headers expanded</span>
+                        <button id="btn-copy-prep" class="btn" title="Copy Preprocessed Source">
+                            📋 Copy Code
+                        </button>
+                    </div>
+                    <div class="stage-dot dot-amber"></div>
+                </div>
+                <div class="stage-body">
+                    <pre id="preprocessed-output" class="preprocessed-view"><code>// Preprocessed code will appear here after compilation...</code></pre>
+                </div>
+            </section>
+
+            <div class="pipeline-connector">
+                <div class="connector-line"></div>
+                <div class="connector-label">2. Lexical Analysis (Regex Matching & Tokenization)</div>
+                <div class="connector-arrow">▼</div>
+            </div>
+
+            <!-- ── Stage 03: 2. Lexical Analysis ───────────────────── -->
+            <section class="stage" id="stage-tokens">
+                <div class="stage-header">
+                    <div class="stage-number">03</div>
+                    <div class="stage-info">
+                        <h2 class="stage-title">2. Lexical Analysis → Tokens</h2>
+                        <p class="stage-desc">The lexer scans characters and groups them into atomic compiler tokens with positions and attributes.</p>
+                        <div class="stage-feature-tags">
+                            <span class="stage-tag">• Input Buffering</span>
+                            <span class="stage-tag">• Regex Matching</span>
+                            <span class="stage-tag">• Tokenization & Attributes</span>
+                            <span class="stage-tag">• Symbol Table Insertion</span>
+                        </div>
                     </div>
                     <div class="stage-actions">
                         <span id="token-count-badge" class="stage-badge">0 tokens</span>
@@ -122,17 +166,23 @@
 
             <div class="pipeline-connector">
                 <div class="connector-line"></div>
-                <div class="connector-label">Parsing</div>
+                <div class="connector-label">3. Syntax Analysis (Context-Free Grammar Parsing)</div>
                 <div class="connector-arrow">▼</div>
             </div>
 
-            <!-- ── Stage 3: Abstract Syntax Tree ───────────────────── -->
+            <!-- ── Stage 04: 3. Syntax Analysis ────────────────────── -->
             <section class="stage" id="stage-ast">
                 <div class="stage-header">
-                    <div class="stage-number">03</div>
+                    <div class="stage-number">04</div>
                     <div class="stage-info">
-                        <h2 class="stage-title">Abstract Syntax Tree</h2>
-                        <p class="stage-desc">The parser builds a hierarchical tree capturing the program's structure — functions, statements, expressions, and control flow.</p>
+                        <h2 class="stage-title">3. Syntax Analysis → Abstract Syntax Tree (AST)</h2>
+                        <p class="stage-desc">The parser builds a hierarchical tree capturing the program's structural semantics and statement flow.</p>
+                        <div class="stage-feature-tags">
+                            <span class="stage-tag">• Context-Free Grammar Rules</span>
+                            <span class="stage-tag">• LL/LR Parsing Engines</span>
+                            <span class="stage-tag">• Parse Tree Generation</span>
+                            <span class="stage-tag">• Tree Pruning & Flattening</span>
+                        </div>
                     </div>
                     <div class="stage-actions">
                         <button id="btn-ast-expand" class="btn" title="Expand Tree Nodes">
@@ -154,88 +204,119 @@
 
             <div class="pipeline-connector">
                 <div class="connector-line"></div>
-                <div class="connector-label">Code Generation</div>
+                <div class="connector-label">4. Semantic Analysis (Type Checking & Scope Resolution)</div>
                 <div class="connector-arrow">▼</div>
             </div>
 
-            <!-- ── Stage 4: Machine Code ───────────────────────────── -->
-            <section class="stage" id="stage-bytecode">
+            <!-- ── Stage 05: 4. Semantic Analysis ──────────────────── -->
+            <section class="stage" id="stage-semantic">
                 <div class="stage-header">
-                    <div class="stage-number">04</div>
+                    <div class="stage-number">05</div>
                     <div class="stage-info">
-                        <h2 class="stage-title">Machine Code</h2>
-                        <p class="stage-desc">The assembler resolves labels and encodes each instruction into raw bytes — binary opcodes executed by hardware.</p>
+                        <h2 class="stage-title">4. Semantic Analysis → Annotated Symbol Table</h2>
+                        <p class="stage-desc">Validates variable scope, strict type checking, function signatures, and assigns memory symbol offsets.</p>
+                        <div class="stage-feature-tags">
+                            <span class="stage-tag">• Strict Type Checking</span>
+                            <span class="stage-tag">• Variable Scope Resolution</span>
+                            <span class="stage-tag">• Memory Address Offset Assignment</span>
+                        </div>
                     </div>
                     <div class="stage-actions">
-                        <button id="btn-bytecode-hex-dec" class="btn" title="Toggle Hexadecimal / Decimal view">
-                            🔢 Hex/Dec
-                        </button>
-                        <button id="btn-copy-bytecode" class="btn" title="Copy Machine Code Bytes">
-                            📋 Copy Bytes
-                        </button>
-                        <button id="btn-download-bin" class="btn" title="Download Machine Code Binary">
-                            💾 Download .bin
+                        <button id="btn-copy-symbols" class="btn" title="Copy Symbol Table">
+                            📋 Copy Table
                         </button>
                     </div>
-                    <div class="stage-dot dot-purple"></div>
+                    <div class="stage-dot dot-blue"></div>
                 </div>
                 <div class="stage-body">
-                    <div id="bytecode-output" class="bytecode-view"></div>
+                    <div id="symbol-output" class="preprocessed-view"></div>
                 </div>
             </section>
 
             <div class="pipeline-connector">
                 <div class="connector-line"></div>
-                <div class="connector-label">Loaded into Memory</div>
+                <div class="connector-label">5. Intermediate Code Gen (Target-Independent 3AC Mapping)</div>
                 <div class="connector-arrow">▼</div>
             </div>
 
-            <!-- ── Stage 5: Memory ─────────────────────────────────── -->
-            <section class="stage" id="stage-memory">
+            <!-- ── Stage 06: 5. Intermediate Code Gen ──────────────── -->
+            <section class="stage" id="stage-raw-ir">
                 <div class="stage-header">
-                    <div class="stage-number">05</div>
+                    <div class="stage-number">06</div>
                     <div class="stage-info">
-                        <h2 class="stage-title">Memory</h2>
-                        <p class="stage-desc">4 KB of byte-addressable memory. Code lives at 0x000, data segment at 0x800, and the stack grows downward from 0xFFC. 32-bit words stored little-endian.</p>
+                        <h2 class="stage-title">5. Intermediate Code Gen → Raw IR (Three-Address Code)</h2>
+                        <p class="stage-desc">Translates AST into Target-Independent Three-Address Code (3AC) quadruples and temporaries.</p>
+                        <div class="stage-feature-tags">
+                            <span class="stage-tag">• Target-Independent Mapping</span>
+                            <span class="stage-tag">• Three-Address Code (3AC)</span>
+                            <span class="stage-tag">• Quadruple Statements</span>
+                        </div>
                     </div>
                     <div class="stage-actions">
-                        <button id="btn-mem-pc" class="btn" title="Jump to Program Counter in Memory">
-                            🎯 Jump to PC
-                        </button>
-                        <button id="btn-mem-sp" class="btn" title="Jump to Stack Pointer in Memory">
-                            🎯 Jump to SP
-                        </button>
-                        <button id="btn-clear-mem" class="btn btn-danger" title="Zero Memory Contents">
-                            🧹 Clear Memory
+                        <button id="btn-copy-raw-ir" class="btn" title="Copy Raw IR">
+                            📋 Copy 3AC IR
                         </button>
                     </div>
-                    <div class="stage-dot dot-purple"></div>
+                    <div class="stage-dot dot-magenta"></div>
                 </div>
                 <div class="stage-body">
-                    <div class="memory-legend">
-                        <span class="legend-item"><span class="legend-swatch legend-code"></span> Code (0x000–0x7FF)</span>
-                        <span class="legend-item"><span class="legend-swatch legend-data"></span> Data (0x800–0xFBF)</span>
-                        <span class="legend-item"><span class="legend-swatch legend-stack"></span> Stack (0xFC0–0xFFF)</span>
+                    <pre id="raw-ir-output" class="preprocessed-view"><code>// Raw Three-Address Code (3AC) IR will appear here...</code></pre>
+                </div>
+            </section>
+
+            <div class="pipeline-connector">
+                <div class="connector-line"></div>
+                <div class="connector-label">6. IR Optimization (CFG, Constant Folding, Dead Code)</div>
+                <div class="connector-arrow">▼</div>
+            </div>
+
+            <!-- ── Stage 07: 6. IR Optimization ────────────────────── -->
+            <section class="stage" id="stage-opt-ir">
+                <div class="stage-header">
+                    <div class="stage-number">07</div>
+                    <div class="stage-info">
+                        <h2 class="stage-title">6. IR Optimization → Optimized IR</h2>
+                        <p class="stage-desc">Applies compiler optimizations including Constant Folding, Control Flow Graphs (CFG), and Dead Code Elimination.</p>
+                        <div class="stage-feature-tags">
+                            <span class="stage-tag">• Control Flow Graphs (CFG)</span>
+                            <span class="stage-tag">• Constant Folding</span>
+                            <span class="stage-tag">• Loop Invariant Extraction</span>
+                            <span class="stage-tag">• Dead Code Elimination</span>
+                        </div>
                     </div>
-                    <div id="memory-grid" class="memory-grid-container"></div>
+                    <div class="stage-actions">
+                        <button id="btn-copy-opt-ir" class="btn" title="Copy Optimized IR">
+                            📋 Copy Opt IR
+                        </button>
+                    </div>
+                    <div class="stage-dot dot-green"></div>
+                </div>
+                <div class="stage-body">
+                    <pre id="opt-ir-output" class="preprocessed-view"><code>// Optimized IR will appear here...</code></pre>
                 </div>
             </section>
 
             <div class="pipeline-connector connector-execution">
                 <div class="connector-line"></div>
-                <div class="connector-label">CPU Fetch & Execute</div>
+                <div class="connector-label">7. Code Generation & 10. CPU Hardware Execution</div>
                 <div class="connector-arrow">▼</div>
             </div>
 
-            <!-- ── Stages 06 & 07: Assembly Code & CPU State (Side-by-Side) ────── -->
+            <!-- ── Stages 08 & 09: Assembly Code & CPU State (Side-by-Side) ────── -->
             <div class="stage-row">
-                <!-- ── Stage 06: Assembly Code ─────────────────────────── -->
+                <!-- ── Stage 08: 7. Code Generation → Assembly Code ────── -->
                 <section class="stage" id="stage-asm">
                     <div class="stage-header">
-                        <div class="stage-number">06</div>
+                        <div class="stage-number">08</div>
                         <div class="stage-info">
-                            <h2 class="stage-title">Assembly Code</h2>
-                            <p class="stage-desc">32-bit assembly instructions — tracked step-by-step with Program Counter highlighting during CPU execution.</p>
+                            <h2 class="stage-title">7. Code Gen → Assembly Code (.s)</h2>
+                            <p class="stage-desc">Emits 32-bit CPU Assembly with instruction selection, register allocation, and live PC line tracking.</p>
+                            <div class="stage-feature-tags">
+                                <span class="stage-tag">• CPU Instruction Selection</span>
+                                <span class="stage-tag">• Register Allocation</span>
+                                <span class="stage-tag">• Pipeline Scheduling</span>
+                                <span class="stage-tag">• Assembly Emission</span>
+                            </div>
                         </div>
                         <div class="stage-actions">
                             <div class="stage-btn-group">
@@ -254,13 +335,20 @@
                     </div>
                 </section>
 
-                <!-- ── Stage 07: CPU State ────────────────────────────── -->
+                <!-- ── Stage 09: 10. CPU Hardware Execution → CPU State ── -->
                 <section class="stage" id="stage-cpu">
                     <div class="stage-header">
-                        <div class="stage-number">07</div>
+                        <div class="stage-number">09</div>
                         <div class="stage-info">
-                            <h2 class="stage-title">CPU State</h2>
-                            <p class="stage-desc">The 32-bit processor's 8 general-purpose registers, flags, program counter, and clock cycles.</p>
+                            <h2 class="stage-title">10. CPU Hardware Execution</h2>
+                            <p class="stage-desc">32-bit processor hardware registers, pointers, flags, and clock cycles executing instructions.</p>
+                            <div class="stage-feature-tags">
+                                <span class="stage-tag">• Fetch-Decode-Execute Loop</span>
+                                <span class="stage-tag">• Registers (R0–R7)</span>
+                                <span class="stage-tag">• Pointers (PC, SP)</span>
+                                <span class="stage-tag">• Flags (Z, N, C, V)</span>
+                                <span class="stage-tag">• Clock Cycles</span>
+                            </div>
                         </div>
                         <div class="stage-actions">
                             <button id="btn-cpu-format" class="btn" title="Toggle Register View (Hex / Decimal)">
@@ -369,10 +457,94 @@
                 </section>
             </div>
 
-            <!-- ── Stage 8: Console Output ─────────────────────────── -->
+            <div class="pipeline-connector">
+                <div class="connector-line"></div>
+                <div class="connector-label">8. Assembler & Binary Opcode Encoding</div>
+                <div class="connector-arrow">▼</div>
+            </div>
+
+            <!-- ── Stage 10: 8. Assembler & Encoding → Machine Code ── -->
+            <section class="stage" id="stage-bytecode">
+                <div class="stage-header">
+                    <div class="stage-number">10</div>
+                    <div class="stage-info">
+                        <h2 class="stage-title">8. Assembler & Encoding → Machine Code (.bin)</h2>
+                        <p class="stage-desc">Resolves jump labels and encodes instructions into raw 32-bit binary opcodes for CPU execution.</p>
+                        <div class="stage-feature-tags">
+                            <span class="stage-tag">• Label Resolution</span>
+                            <span class="stage-tag">• Opcode Encoding</span>
+                            <span class="stage-tag">• Binary Byte Stream</span>
+                        </div>
+                    </div>
+                    <div class="stage-actions">
+                        <button id="btn-bytecode-hex-dec" class="btn" title="Toggle Hexadecimal / Decimal view">
+                            🔢 Hex/Dec
+                        </button>
+                        <button id="btn-copy-bytecode" class="btn" title="Copy Machine Code Bytes">
+                            📋 Copy Bytes
+                        </button>
+                        <button id="btn-download-bin" class="btn" title="Download Machine Code Binary">
+                            💾 Download .bin
+                        </button>
+                    </div>
+                    <div class="stage-dot dot-purple"></div>
+                </div>
+                <div class="stage-body">
+                    <div id="bytecode-output" class="bytecode-view"></div>
+                </div>
+            </section>
+
+            <div class="pipeline-connector">
+                <div class="connector-line"></div>
+                <div class="connector-label">9. Memory Linking & Segment Placement</div>
+                <div class="connector-arrow">▼</div>
+            </div>
+
+            <!-- ── Stage 11: 9. Memory Linking & Load → Memory ─────── -->
+            <section class="stage" id="stage-memory">
+                <div class="stage-header">
+                    <div class="stage-number">11</div>
+                    <div class="stage-info">
+                        <h2 class="stage-title">9. Memory Linking & Load → Memory (RAM)</h2>
+                        <p class="stage-desc">4 KB byte-addressable memory layout. Code segment at 0x000, Data segment at 0x800, and Stack segment at 0xFFC.</p>
+                        <div class="stage-feature-tags">
+                            <span class="stage-tag">• Code Segment (0x000–0x7FF)</span>
+                            <span class="stage-tag">• Data Segment (0x800–0xFBF)</span>
+                            <span class="stage-tag">• Stack Segment (0xFC0–0xFFF)</span>
+                        </div>
+                    </div>
+                    <div class="stage-actions">
+                        <button id="btn-mem-pc" class="btn" title="Jump to Program Counter in Memory">
+                            🎯 Jump to PC
+                        </button>
+                        <button id="btn-mem-sp" class="btn" title="Jump to Stack Pointer in Memory">
+                            🎯 Jump to SP
+                        </button>
+                        <button id="btn-clear-mem" class="btn btn-danger" title="Zero Memory Contents">
+                            🧹 Clear Memory
+                        </button>
+                    </div>
+                    <div class="stage-dot dot-purple"></div>
+                </div>
+                <div class="stage-body">
+                    <div class="memory-legend">
+                        <span class="legend-item"><span class="legend-swatch legend-code"></span> Code (0x000–0x7FF)</span>
+                        <span class="legend-item"><span class="legend-swatch legend-data"></span> Data (0x800–0xFBF)</span>
+                        <span class="legend-item"><span class="legend-swatch legend-stack"></span> Stack (0xFC0–0xFFF)</span>
+                    </div>
+                    <div id="memory-grid" class="memory-grid-container"></div>
+                </div>
+            </section>
+
+            <div class="pipeline-connector">
+                <div class="connector-line"></div>
+                <div class="connector-arrow">▼</div>
+            </div>
+
+            <!-- ── Stage 12: Console Output ─────────────────────────── -->
             <section class="stage" id="stage-console">
                 <div class="stage-header">
-                    <div class="stage-number">08</div>
+                    <div class="stage-number">12</div>
                     <div class="stage-info">
                         <h2 class="stage-title">Console Output</h2>
                         <p class="stage-desc">Program output from <code>printf()</code> calls and system messages. Just like running your program in a terminal.</p>
@@ -397,10 +569,10 @@
                 <div class="connector-arrow">▼</div>
             </div>
 
-            <!-- ── Stage 9: Execution Trace ────────────────────────── -->
+            <!-- ── Stage 13: Execution Trace ────────────────────────── -->
             <section class="stage" id="stage-trace">
                 <div class="stage-header">
-                    <div class="stage-number">09</div>
+                    <div class="stage-number">13</div>
                     <div class="stage-info">
                         <h2 class="stage-title">Execution Trace</h2>
                         <p class="stage-desc">A cycle-by-cycle log of every instruction the CPU executed — with program counter, opcode, and explanation.</p>

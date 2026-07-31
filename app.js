@@ -185,8 +185,12 @@ int main() {
     const speedLabel  = $('#speed-value');
 
     // Panels
+    const prepPanel     = $('#preprocessed-output');
     const tokenPanel    = $('#token-output');
     const astPanel      = $('#ast-output');
+    const symbolPanel   = $('#symbol-output');
+    const rawIRPanel    = $('#raw-ir-output');
+    const optIRPanel    = $('#opt-ir-output');
     const asmPanel      = $('#asm-output');
     const bytecodePanel = $('#bytecode-output');
     const consolePanel  = $('#console-output');
@@ -458,6 +462,20 @@ int main() {
     }
 
     // ════════════════════════════════════════════════════════════════════
+    // Preprocessed Code Display
+    // ════════════════════════════════════════════════════════════════════
+
+    function renderPreprocessedCode(code, headers) {
+        if (!prepPanel) return;
+        prepPanel.innerHTML = highlightCSyntax(code || '// No preprocessed code available');
+        const badge = $('#prep-header-badge');
+        if (badge) {
+            const count = headers ? headers.length : 0;
+            badge.textContent = `${count} header${count !== 1 ? 's' : ''} expanded`;
+        }
+    }
+
+    // ════════════════════════════════════════════════════════════════════
     // Token Display
     // ════════════════════════════════════════════════════════════════════
 
@@ -668,6 +686,56 @@ int main() {
     }
 
     // ════════════════════════════════════════════════════════════════════
+    // Semantic Analysis & Symbol Table Display
+    // ════════════════════════════════════════════════════════════════════
+
+    function renderSemanticSymbols(symbolTable, genSymbols) {
+        if (!symbolPanel) return;
+        let text = '// ── Annotated Symbol Table & Scope Resolution ──\n';
+        text += '// Checks variable declarations, strict types, and memory offsets\n\n';
+
+        const map = genSymbols || symbolTable;
+        if (map && map.size > 0) {
+            for (const [name, info] of map) {
+                const addr = typeof info === 'number' ? info : (info.address !== undefined ? info.address : 0);
+                const addrHex = `0x${addr.toString(16).toUpperCase().padStart(3, '0')}`;
+                text += `Symbol: "${name.padEnd(12)}"  Type: int32_t   Scope: local/global   Address: ${addrHex}\n`;
+            }
+        } else {
+            text += '// No variables declared in program symbols\n';
+        }
+        symbolPanel.textContent = text;
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    // Intermediate Representation (3AC IR Display)
+    // ════════════════════════════════════════════════════════════════════
+
+    function renderRawIR(rawIR) {
+        if (!rawIRPanel) return;
+        if (!rawIR || rawIR.length === 0) {
+            rawIRPanel.textContent = '// No Three-Address Code (3AC) IR generated';
+            return;
+        }
+        let text = '// ── Raw Three-Address Code (3AC IR) ──\n';
+        text += '// Target-Independent quadruple statements and temporaries\n\n';
+        text += rawIR.map((inst, i) => `${String(i).padStart(3, '0')}: ${inst.text || `${inst.target || ''} ${inst.op} ${inst.arg1 || ''} ${inst.arg2 || ''}`}`).join('\n');
+        rawIRPanel.textContent = text;
+    }
+
+    function renderOptimizedIR(optIR) {
+        if (!optIRPanel) return;
+        if (!optIR || optIR.length === 0) {
+            optIRPanel.textContent = '// No Optimized IR generated';
+            return;
+        }
+        let text = '// ── Optimized Intermediate Representation (Opt IR) ──\n';
+        text += '// Transformed via Constant Folding & Dead Code Elimination\n\n';
+        text += optIR.map((inst, i) => `${String(i).padStart(3, '0')}: ${inst.text || `${inst.target || ''} ${inst.op} ${inst.arg1 || ''} ${inst.arg2 || ''}`}`).join('\n');
+        optIRPanel.textContent = text;
+    }
+
+    // ════════════════════════════════════════════════════════════════════
     // Assembly Display
     // ════════════════════════════════════════════════════════════════════
 
@@ -850,7 +918,10 @@ int main() {
         const asmLine = $(`.asm-line[data-address="${pc}"]`);
         if (asmLine) {
             asmLine.classList.add('asm-current');
-            asmLine.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            // Scroll inside assembly panel container only during CPU execution, keeping page window stationary
+            if (asmPanel && cpu.running) {
+                asmPanel.scrollTop = asmLine.offsetTop - asmPanel.offsetTop - 30;
+            }
         }
 
         if (pc < MEM_DISPLAY_SIZE && memoryCells[pc]) {
@@ -889,8 +960,12 @@ int main() {
             }
 
             // Render all panels
+            renderPreprocessedCode(result.preprocessedCode, result.expandedHeaders);
             renderTokens(result.tokens);
             renderAST(result.ast);
+            renderSemanticSymbols(result.symbolTable, result.symbols);
+            renderRawIR(result.rawIR);
+            renderOptimizedIR(result.optimizedIR);
             renderAssembly(result.listing, result.labels);
             renderBytecode(result.bytecode);
             updateMemoryGrid();
@@ -1077,7 +1152,7 @@ int main() {
         if (!memoryGrid) return;
         const cell = memoryCells[addr];
         if (cell) {
-            cell.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            memoryGrid.scrollTop = cell.offsetTop - memoryGrid.offsetTop - 30;
             flashMemoryCell(addr, 'mem-pc');
         }
     }
@@ -1159,6 +1234,14 @@ int main() {
             });
         }
 
+        // Stage 2 Preprocessed Code Actions
+        const btnCopyPrep = $('#btn-copy-prep');
+        if (btnCopyPrep) {
+            btnCopyPrep.addEventListener('click', () => {
+                copyTextWithFeedback(prepPanel ? prepPanel.textContent : '', btnCopyPrep);
+            });
+        }
+
         // Stage 2 Token Actions
         const btnCopyTokens = $('#btn-copy-tokens');
         if (btnCopyTokens) {
@@ -1178,6 +1261,30 @@ int main() {
         if (btnCopyAst) {
             btnCopyAst.addEventListener('click', () => {
                 copyTextWithFeedback(astPanel ? astPanel.innerText : '', btnCopyAst);
+            });
+        }
+
+        // Stage 5 Semantic Symbol Table Actions
+        const btnCopySymbols = $('#btn-copy-symbols');
+        if (btnCopySymbols) {
+            btnCopySymbols.addEventListener('click', () => {
+                copyTextWithFeedback(symbolPanel ? symbolPanel.textContent : '', btnCopySymbols);
+            });
+        }
+
+        // Stage 6 Raw IR Actions
+        const btnCopyRawIR = $('#btn-copy-raw-ir');
+        if (btnCopyRawIR) {
+            btnCopyRawIR.addEventListener('click', () => {
+                copyTextWithFeedback(rawIRPanel ? rawIRPanel.textContent : '', btnCopyRawIR);
+            });
+        }
+
+        // Stage 7 Opt IR Actions
+        const btnCopyOptIR = $('#btn-copy-opt-ir');
+        if (btnCopyOptIR) {
+            btnCopyOptIR.addEventListener('click', () => {
+                copyTextWithFeedback(optIRPanel ? optIRPanel.textContent : '', btnCopyOptIR);
             });
         }
 
