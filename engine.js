@@ -1,8 +1,9 @@
 // ============================================================================
-// engine.js — MiniCPU Hardware Engine
+// engine.js — MiniCPU 32-bit Hardware Engine
 // ============================================================================
 // Contains: EventBus, Memory, Registers, Flags, ALU, Stack, InstructionSet,
 //           Assembler, Loader, CPU, Debugger
+// Architecture: 32-bit RISC-like, 8 general-purpose registers, 4KB memory
 // ============================================================================
 
 'use strict';
@@ -83,64 +84,80 @@ class EventBus {
 }
 
 // ============================================================================
-// Constants — ISA Definition
+// Constants — 32-bit ISA Definition
 // ============================================================================
 
-const MEMORY_SIZE = 256;       // 256 bytes addressable (0x00–0xFF)
-const NUM_REGISTERS = 4;       // R0–R3
-const STACK_START = 0xFF;      // Stack grows downward from 0xFF
-const DATA_START = 0xC0;       // Data segment starts at 0xC0
-const CODE_START = 0x00;       // Code segment starts at 0x00
+const MEMORY_SIZE = 4096;      // 4 KB addressable (0x000–0xFFF)
+const NUM_REGISTERS = 8;       // R0–R7
+const STACK_START = 0xFFC;     // Stack grows downward from 0xFFC
+const DATA_START = 0x800;      // Data segment starts at 0x800
+const CODE_START = 0x000;      // Code segment starts at 0x000
+const WORD_SIZE = 4;           // 32-bit words = 4 bytes
 
-// Opcodes — Version 1 (Core)
+// Opcodes — 32-bit ISA
+// Instruction format: [opcode:8][operands:variable]
+// All instructions are aligned to byte boundaries
 const OP = {
     NOP:    0x00,
     // Data Movement
-    MOV_RR: 0x01,   // MOV Rd, Rs          — Rd = Rs
-    MOV_RI: 0x02,   // MOV Rd, #imm8       — Rd = imm8
-    LOAD:   0x03,   // LOAD Rd, [addr]     — Rd = mem[addr]
-    STORE:  0x04,   // STORE Rs, [addr]    — mem[addr] = Rs
-    LOAD_RR:0x05,   // LOAD Rd, [Rs]       — Rd = mem[Rs]
-    STORE_RR:0x06,  // STORE Rs, [Rd]      — mem[Rd] = Rs
+    MOV_RR: 0x01,   // MOV Rd, Rs          — Rd = Rs                    (2 bytes: op, rd|rs)
+    MOV_RI: 0x02,   // MOV Rd, #imm32      — Rd = imm32                (6 bytes: op, rd, imm32)
+    LOAD:   0x03,   // LOAD Rd, [addr16]   — Rd = mem32[addr]          (4 bytes: op, rd, addr16)
+    STORE:  0x04,   // STORE Rs, [addr16]  — mem32[addr] = Rs          (4 bytes: op, rs, addr16)
+    LOAD_RR:0x05,   // LOAD Rd, [Rs]       — Rd = mem32[Rs]            (2 bytes: op, rd|rs)
+    STORE_RR:0x06,  // STORE Rs, [Rd]      — mem32[Rd] = Rs            (2 bytes: op, rd|rs)
     // Arithmetic
-    ADD_RR: 0x10,   // ADD Rd, Rs          — Rd = Rd + Rs
-    ADD_RI: 0x11,   // ADD Rd, #imm8       — Rd = Rd + imm8
-    SUB_RR: 0x12,   // SUB Rd, Rs          — Rd = Rd - Rs
-    SUB_RI: 0x13,   // SUB Rd, #imm8       — Rd = Rd - imm8
-    MUL_RR: 0x14,   // MUL Rd, Rs          — Rd = Rd * Rs
-    MUL_RI: 0x15,   // MUL Rd, #imm8       — Rd = Rd * imm8
-    INC:    0x16,   // INC Rd              — Rd = Rd + 1
-    DEC:    0x17,   // DEC Rd              — Rd = Rd - 1
+    ADD_RR: 0x10,   // ADD Rd, Rs          — Rd = Rd + Rs              (2 bytes)
+    ADD_RI: 0x11,   // ADD Rd, #imm32      — Rd = Rd + imm32          (6 bytes)
+    SUB_RR: 0x12,   // SUB Rd, Rs          — Rd = Rd - Rs              (2 bytes)
+    SUB_RI: 0x13,   // SUB Rd, #imm32      — Rd = Rd - imm32          (6 bytes)
+    MUL_RR: 0x14,   // MUL Rd, Rs          — Rd = Rd * Rs              (2 bytes)
+    MUL_RI: 0x15,   // MUL Rd, #imm32      — Rd = Rd * imm32          (6 bytes)
+    DIV_RR: 0x16,   // DIV Rd, Rs          — Rd = Rd / Rs              (2 bytes)
+    DIV_RI: 0x17,   // DIV Rd, #imm32      — Rd = Rd / imm32          (6 bytes)
+    MOD_RR: 0x18,   // MOD Rd, Rs          — Rd = Rd % Rs              (2 bytes)
+    MOD_RI: 0x19,   // MOD Rd, #imm32      — Rd = Rd % imm32          (6 bytes)
+    INC:    0x1A,   // INC Rd              — Rd = Rd + 1               (2 bytes)
+    DEC:    0x1B,   // DEC Rd              — Rd = Rd - 1               (2 bytes)
+    NEG:    0x1C,   // NEG Rd              — Rd = -Rd                  (2 bytes)
     // Logic
-    AND_RR: 0x20,   // AND Rd, Rs          — Rd = Rd & Rs
-    OR_RR:  0x21,   // OR  Rd, Rs          — Rd = Rd | Rs
-    XOR_RR: 0x22,   // XOR Rd, Rs          — Rd = Rd ^ Rs
-    NOT:    0x23,   // NOT Rd              — Rd = ~Rd
-    SHL:    0x24,   // SHL Rd, #imm8       — Rd = Rd << imm8
-    SHR:    0x25,   // SHR Rd, #imm8       — Rd = Rd >> imm8
+    AND_RR: 0x20,   // AND Rd, Rs          — Rd = Rd & Rs              (2 bytes)
+    OR_RR:  0x21,   // OR  Rd, Rs          — Rd = Rd | Rs              (2 bytes)
+    XOR_RR: 0x22,   // XOR Rd, Rs          — Rd = Rd ^ Rs              (2 bytes)
+    NOT:    0x23,   // NOT Rd              — Rd = ~Rd                  (2 bytes)
+    SHL:    0x24,   // SHL Rd, #imm8       — Rd = Rd << imm8           (3 bytes)
+    SHR:    0x25,   // SHR Rd, #imm8       — Rd = Rd >> imm8           (3 bytes)
+    AND_RI: 0x26,   // AND Rd, #imm32      — Rd = Rd & imm32          (6 bytes)
+    OR_RI:  0x27,   // OR  Rd, #imm32      — Rd = Rd | imm32          (6 bytes)
     // Comparison
-    CMP_RR: 0x30,   // CMP Rd, Rs          — flags = Rd - Rs
-    CMP_RI: 0x31,   // CMP Rd, #imm8       — flags = Rd - imm8
-    // Branching
-    JMP:    0x40,   // JMP addr            — PC = addr
-    JZ:     0x41,   // JZ  addr            — if ZF: PC = addr
-    JNZ:    0x42,   // JNZ addr            — if !ZF: PC = addr
-    JG:     0x43,   // JG  addr            — if !ZF && !NF: PC = addr
-    JL:     0x44,   // JL  addr            — if NF: PC = addr
-    JGE:    0x45,   // JGE addr            — if ZF || !NF: PC = addr
-    JLE:    0x46,   // JLE addr            — if ZF || NF: PC = addr
-    // Stack
-    PUSH:   0x50,   // PUSH Rs             — mem[SP] = Rs; SP--
-    POP:    0x51,   // POP  Rd             — SP++; Rd = mem[SP]
-    PUSH_I: 0x52,   // PUSH #imm8          — mem[SP] = imm8; SP--
+    CMP_RR: 0x30,   // CMP Rd, Rs          — flags = Rd - Rs           (2 bytes)
+    CMP_RI: 0x31,   // CMP Rd, #imm32      — flags = Rd - imm32       (6 bytes)
+    // Branching (addresses are 16-bit)
+    JMP:    0x40,   // JMP addr16          — PC = addr                 (3 bytes)
+    JZ:     0x41,   // JZ  addr16          — if ZF: PC = addr          (3 bytes)
+    JNZ:    0x42,   // JNZ addr16          — if !ZF: PC = addr         (3 bytes)
+    JG:     0x43,   // JG  addr16          — if >: PC = addr           (3 bytes)
+    JL:     0x44,   // JL  addr16          — if <: PC = addr           (3 bytes)
+    JGE:    0x45,   // JGE addr16          — if >=: PC = addr          (3 bytes)
+    JLE:    0x46,   // JLE addr16          — if <=: PC = addr          (3 bytes)
+    // Stack (push/pop 32-bit words)
+    PUSH:   0x50,   // PUSH Rs             — SP-=4; mem32[SP] = Rs     (2 bytes)
+    POP:    0x51,   // POP  Rd             — Rd = mem32[SP]; SP+=4     (2 bytes)
+    PUSH_I: 0x52,   // PUSH #imm32         — SP-=4; mem32[SP] = imm32  (5 bytes)
     // Subroutines
-    CALL:   0x60,   // CALL addr           — push PC+2; PC = addr
-    RET:    0x61,   // RET                 — pop PC
+    CALL:   0x60,   // CALL addr16         — push PC+3; PC = addr      (3 bytes)
+    RET:    0x61,   // RET                 — pop PC                    (1 byte)
     // I/O
-    OUT:    0x70,   // OUT Rs              — output Rs value
-    OUT_I:  0x71,   // OUT #imm8           — output imm8
+    OUT:    0x70,   // OUT Rs              — output Rs value           (2 bytes)
+    OUT_I:  0x71,   // OUT #imm32          — output imm32             (5 bytes)
     // System
-    HLT:    0xFF,   // HLT                 — halt CPU
+    SYSCALL:0x80,   // SYSCALL #id         — system call               (2 bytes)
+    // System call IDs (in next byte):
+    //   0x01 = print integer (R0 = value)
+    //   0x02 = print string (R0 = addr of null-terminated string in memory)
+    //   0x03 = print char (R0 = ASCII char)
+    //   0x04 = print newline
+    HLT:    0xFF,   // HLT                 — halt CPU                  (1 byte)
 };
 
 // Reverse lookup: opcode number -> name
@@ -151,52 +168,60 @@ for (const [name, code] of Object.entries(OP)) {
 
 // Instruction format info: opcode -> { size, format, description }
 const INSTRUCTION_SET = {
-    [OP.NOP]:     { size: 1, format: 'none',    mnemonic: 'NOP',   desc: 'No operation' },
-    [OP.MOV_RR]:  { size: 2, format: 'rr',      mnemonic: 'MOV',   desc: 'Copy register to register' },
-    [OP.MOV_RI]:  { size: 3, format: 'ri',      mnemonic: 'MOV',   desc: 'Load immediate into register' },
-    [OP.LOAD]:    { size: 3, format: 'ra',      mnemonic: 'LOAD',  desc: 'Load from memory address' },
-    [OP.STORE]:   { size: 3, format: 'ra',      mnemonic: 'STORE', desc: 'Store to memory address' },
-    [OP.LOAD_RR]: { size: 2, format: 'rr',      mnemonic: 'LOAD',  desc: 'Load from address in register' },
-    [OP.STORE_RR]:{ size: 2, format: 'rr',      mnemonic: 'STORE', desc: 'Store to address in register' },
-    [OP.ADD_RR]:  { size: 2, format: 'rr',      mnemonic: 'ADD',   desc: 'Add register to register' },
-    [OP.ADD_RI]:  { size: 3, format: 'ri',      mnemonic: 'ADD',   desc: 'Add immediate to register' },
-    [OP.SUB_RR]:  { size: 2, format: 'rr',      mnemonic: 'SUB',   desc: 'Subtract register from register' },
-    [OP.SUB_RI]:  { size: 3, format: 'ri',      mnemonic: 'SUB',   desc: 'Subtract immediate from register' },
-    [OP.MUL_RR]:  { size: 2, format: 'rr',      mnemonic: 'MUL',   desc: 'Multiply register by register' },
-    [OP.MUL_RI]:  { size: 3, format: 'ri',      mnemonic: 'MUL',   desc: 'Multiply register by immediate' },
-    [OP.INC]:     { size: 2, format: 'r',       mnemonic: 'INC',   desc: 'Increment register' },
-    [OP.DEC]:     { size: 2, format: 'r',       mnemonic: 'DEC',   desc: 'Decrement register' },
-    [OP.AND_RR]:  { size: 2, format: 'rr',      mnemonic: 'AND',   desc: 'Bitwise AND' },
-    [OP.OR_RR]:   { size: 2, format: 'rr',      mnemonic: 'OR',    desc: 'Bitwise OR' },
-    [OP.XOR_RR]:  { size: 2, format: 'rr',      mnemonic: 'XOR',   desc: 'Bitwise XOR' },
-    [OP.NOT]:     { size: 2, format: 'r',       mnemonic: 'NOT',   desc: 'Bitwise NOT' },
-    [OP.SHL]:     { size: 3, format: 'ri',      mnemonic: 'SHL',   desc: 'Shift left' },
-    [OP.SHR]:     { size: 3, format: 'ri',      mnemonic: 'SHR',   desc: 'Shift right' },
-    [OP.CMP_RR]:  { size: 2, format: 'rr',      mnemonic: 'CMP',   desc: 'Compare registers' },
-    [OP.CMP_RI]:  { size: 3, format: 'ri',      mnemonic: 'CMP',   desc: 'Compare register with immediate' },
-    [OP.JMP]:     { size: 2, format: 'addr',    mnemonic: 'JMP',   desc: 'Unconditional jump' },
-    [OP.JZ]:      { size: 2, format: 'addr',    mnemonic: 'JZ',    desc: 'Jump if zero' },
-    [OP.JNZ]:     { size: 2, format: 'addr',    mnemonic: 'JNZ',   desc: 'Jump if not zero' },
-    [OP.JG]:      { size: 2, format: 'addr',    mnemonic: 'JG',    desc: 'Jump if greater' },
-    [OP.JL]:      { size: 2, format: 'addr',    mnemonic: 'JL',    desc: 'Jump if less' },
-    [OP.JGE]:     { size: 2, format: 'addr',    mnemonic: 'JGE',   desc: 'Jump if greater or equal' },
-    [OP.JLE]:     { size: 2, format: 'addr',    mnemonic: 'JLE',   desc: 'Jump if less or equal' },
-    [OP.PUSH]:    { size: 2, format: 'r',       mnemonic: 'PUSH',  desc: 'Push register onto stack' },
-    [OP.POP]:     { size: 2, format: 'r',       mnemonic: 'POP',   desc: 'Pop stack into register' },
-    [OP.PUSH_I]:  { size: 2, format: 'imm',     mnemonic: 'PUSH',  desc: 'Push immediate onto stack' },
-    [OP.CALL]:    { size: 2, format: 'addr',    mnemonic: 'CALL',  desc: 'Call subroutine' },
-    [OP.RET]:     { size: 1, format: 'none',    mnemonic: 'RET',   desc: 'Return from subroutine' },
-    [OP.OUT]:     { size: 2, format: 'r',       mnemonic: 'OUT',   desc: 'Output register value' },
-    [OP.OUT_I]:   { size: 2, format: 'imm',     mnemonic: 'OUT',   desc: 'Output immediate value' },
-    [OP.HLT]:     { size: 1, format: 'none',    mnemonic: 'HLT',   desc: 'Halt CPU' },
+    [OP.NOP]:     { size: 1, format: 'none',     mnemonic: 'NOP',     desc: 'No operation' },
+    [OP.MOV_RR]:  { size: 2, format: 'rr',       mnemonic: 'MOV',     desc: 'Copy register to register' },
+    [OP.MOV_RI]:  { size: 6, format: 'ri32',     mnemonic: 'MOV',     desc: 'Load 32-bit immediate into register' },
+    [OP.LOAD]:    { size: 4, format: 'ra16',     mnemonic: 'LOAD',    desc: 'Load 32-bit word from memory' },
+    [OP.STORE]:   { size: 4, format: 'ra16',     mnemonic: 'STORE',   desc: 'Store 32-bit word to memory' },
+    [OP.LOAD_RR]: { size: 2, format: 'rr',       mnemonic: 'LOAD',    desc: 'Load from address in register' },
+    [OP.STORE_RR]:{ size: 2, format: 'rr',       mnemonic: 'STORE',   desc: 'Store to address in register' },
+    [OP.ADD_RR]:  { size: 2, format: 'rr',       mnemonic: 'ADD',     desc: 'Add register to register' },
+    [OP.ADD_RI]:  { size: 6, format: 'ri32',     mnemonic: 'ADD',     desc: 'Add 32-bit immediate to register' },
+    [OP.SUB_RR]:  { size: 2, format: 'rr',       mnemonic: 'SUB',     desc: 'Subtract register from register' },
+    [OP.SUB_RI]:  { size: 6, format: 'ri32',     mnemonic: 'SUB',     desc: 'Subtract 32-bit immediate' },
+    [OP.MUL_RR]:  { size: 2, format: 'rr',       mnemonic: 'MUL',     desc: 'Multiply register by register' },
+    [OP.MUL_RI]:  { size: 6, format: 'ri32',     mnemonic: 'MUL',     desc: 'Multiply register by immediate' },
+    [OP.DIV_RR]:  { size: 2, format: 'rr',       mnemonic: 'DIV',     desc: 'Divide register by register' },
+    [OP.DIV_RI]:  { size: 6, format: 'ri32',     mnemonic: 'DIV',     desc: 'Divide register by immediate' },
+    [OP.MOD_RR]:  { size: 2, format: 'rr',       mnemonic: 'MOD',     desc: 'Modulo register by register' },
+    [OP.MOD_RI]:  { size: 6, format: 'ri32',     mnemonic: 'MOD',     desc: 'Modulo register by immediate' },
+    [OP.INC]:     { size: 2, format: 'r',        mnemonic: 'INC',     desc: 'Increment register' },
+    [OP.DEC]:     { size: 2, format: 'r',        mnemonic: 'DEC',     desc: 'Decrement register' },
+    [OP.NEG]:     { size: 2, format: 'r',        mnemonic: 'NEG',     desc: 'Negate register' },
+    [OP.AND_RR]:  { size: 2, format: 'rr',       mnemonic: 'AND',     desc: 'Bitwise AND' },
+    [OP.OR_RR]:   { size: 2, format: 'rr',       mnemonic: 'OR',      desc: 'Bitwise OR' },
+    [OP.XOR_RR]:  { size: 2, format: 'rr',       mnemonic: 'XOR',     desc: 'Bitwise XOR' },
+    [OP.NOT]:     { size: 2, format: 'r',        mnemonic: 'NOT',     desc: 'Bitwise NOT' },
+    [OP.SHL]:     { size: 3, format: 'ri8',      mnemonic: 'SHL',     desc: 'Shift left' },
+    [OP.SHR]:     { size: 3, format: 'ri8',      mnemonic: 'SHR',     desc: 'Shift right' },
+    [OP.AND_RI]:  { size: 6, format: 'ri32',     mnemonic: 'AND',     desc: 'Bitwise AND with immediate' },
+    [OP.OR_RI]:   { size: 6, format: 'ri32',     mnemonic: 'OR',      desc: 'Bitwise OR with immediate' },
+    [OP.CMP_RR]:  { size: 2, format: 'rr',       mnemonic: 'CMP',     desc: 'Compare registers' },
+    [OP.CMP_RI]:  { size: 6, format: 'ri32',     mnemonic: 'CMP',     desc: 'Compare register with immediate' },
+    [OP.JMP]:     { size: 3, format: 'addr16',   mnemonic: 'JMP',     desc: 'Unconditional jump' },
+    [OP.JZ]:      { size: 3, format: 'addr16',   mnemonic: 'JZ',      desc: 'Jump if zero' },
+    [OP.JNZ]:     { size: 3, format: 'addr16',   mnemonic: 'JNZ',     desc: 'Jump if not zero' },
+    [OP.JG]:      { size: 3, format: 'addr16',   mnemonic: 'JG',      desc: 'Jump if greater' },
+    [OP.JL]:      { size: 3, format: 'addr16',   mnemonic: 'JL',      desc: 'Jump if less' },
+    [OP.JGE]:     { size: 3, format: 'addr16',   mnemonic: 'JGE',     desc: 'Jump if greater or equal' },
+    [OP.JLE]:     { size: 3, format: 'addr16',   mnemonic: 'JLE',     desc: 'Jump if less or equal' },
+    [OP.PUSH]:    { size: 2, format: 'r',        mnemonic: 'PUSH',    desc: 'Push register onto stack' },
+    [OP.POP]:     { size: 2, format: 'r',        mnemonic: 'POP',     desc: 'Pop stack into register' },
+    [OP.PUSH_I]:  { size: 5, format: 'imm32',   mnemonic: 'PUSH',    desc: 'Push 32-bit immediate onto stack' },
+    [OP.CALL]:    { size: 3, format: 'addr16',   mnemonic: 'CALL',    desc: 'Call subroutine' },
+    [OP.RET]:     { size: 1, format: 'none',     mnemonic: 'RET',     desc: 'Return from subroutine' },
+    [OP.OUT]:     { size: 2, format: 'r',        mnemonic: 'OUT',     desc: 'Output register value' },
+    [OP.OUT_I]:   { size: 5, format: 'imm32',   mnemonic: 'OUT',     desc: 'Output immediate value' },
+    [OP.SYSCALL]: { size: 2, format: 'imm8',    mnemonic: 'SYSCALL', desc: 'System call' },
+    [OP.HLT]:     { size: 1, format: 'none',     mnemonic: 'HLT',     desc: 'Halt CPU' },
 };
 
 // Register name mapping
-const REG_NAMES = ['R0', 'R1', 'R2', 'R3'];
+const REG_NAMES = ['R0', 'R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R7'];
 
 
 // ============================================================================
-// Memory — Observable memory with event emission
+// Memory — Observable memory with event emission (byte-addressable, 32-bit words)
 // ============================================================================
 
 class Memory {
@@ -206,11 +231,12 @@ class Memory {
         this.data = new Uint8Array(size);
         this._regions = {
             code:  { start: CODE_START, end: DATA_START - 1, label: 'Code' },
-            data:  { start: DATA_START, end: STACK_START - 16, label: 'Data' },
-            stack: { start: STACK_START - 15, end: STACK_START, label: 'Stack' },
+            data:  { start: DATA_START, end: STACK_START - 64, label: 'Data' },
+            stack: { start: STACK_START - 63, end: STACK_START + 3, label: 'Stack' },
         };
     }
 
+    // Read a single byte
     read(address) {
         if (address < 0 || address >= this.size) {
             this.bus.emit('error', { type: 'memory', message: `Read out of bounds: 0x${address.toString(16).toUpperCase()}` });
@@ -220,6 +246,7 @@ class Memory {
         return this.data[address];
     }
 
+    // Write a single byte
     write(address, value) {
         if (address < 0 || address >= this.size) {
             this.bus.emit('error', { type: 'memory', message: `Write out of bounds: 0x${address.toString(16).toUpperCase()}` });
@@ -230,16 +257,89 @@ class Memory {
         this.bus.emit('memoryWrite', { address, value: this.data[address], oldValue });
     }
 
+    // Read 32-bit word (little-endian)
+    read32(address) {
+        if (address < 0 || address + 3 >= this.size) {
+            this.bus.emit('error', { type: 'memory', message: `Read32 out of bounds: 0x${address.toString(16).toUpperCase()}` });
+            return 0;
+        }
+        const val = (this.data[address]) |
+                    (this.data[address + 1] << 8) |
+                    (this.data[address + 2] << 16) |
+                    ((this.data[address + 3] << 24) >>> 0);  // >>> 0 to handle sign
+        this.bus.emit('memoryRead', { address, value: val, width: 32 });
+        return val | 0;  // Convert to signed 32-bit
+    }
+
+    // Write 32-bit word (little-endian)
+    write32(address, value) {
+        if (address < 0 || address + 3 >= this.size) {
+            this.bus.emit('error', { type: 'memory', message: `Write32 out of bounds: 0x${address.toString(16).toUpperCase()}` });
+            return;
+        }
+        const v = value | 0;
+        this.data[address]     = v & 0xFF;
+        this.data[address + 1] = (v >>> 8) & 0xFF;
+        this.data[address + 2] = (v >>> 16) & 0xFF;
+        this.data[address + 3] = (v >>> 24) & 0xFF;
+        this.bus.emit('memoryWrite', { address, value: v, width: 32 });
+    }
+
+    // Read 16-bit word (little-endian)
+    read16(address) {
+        if (address < 0 || address + 1 >= this.size) return 0;
+        return (this.data[address]) | (this.data[address + 1] << 8);
+    }
+
+    // Write 16-bit word (little-endian)
+    write16(address, value) {
+        if (address < 0 || address + 1 >= this.size) return;
+        this.data[address]     = value & 0xFF;
+        this.data[address + 1] = (value >> 8) & 0xFF;
+    }
+
     // Read without emitting events (for visualization)
     peek(address) {
         if (address < 0 || address >= this.size) return 0;
         return this.data[address];
     }
 
+    // Peek 32-bit without events
+    peek32(address) {
+        if (address < 0 || address + 3 >= this.size) return 0;
+        return ((this.data[address]) |
+                (this.data[address + 1] << 8) |
+                (this.data[address + 2] << 16) |
+                ((this.data[address + 3] << 24) >>> 0)) | 0;
+    }
+
+    // Peek 16-bit without events
+    peek16(address) {
+        if (address < 0 || address + 1 >= this.size) return 0;
+        return (this.data[address]) | (this.data[address + 1] << 8);
+    }
+
     // Write without emitting events (for loading programs)
     poke(address, value) {
         if (address < 0 || address >= this.size) return;
         this.data[address] = value & 0xFF;
+    }
+
+    // Poke 32-bit without events
+    poke32(address, value) {
+        if (address < 0 || address + 3 >= this.size) return;
+        const v = value | 0;
+        this.data[address]     = v & 0xFF;
+        this.data[address + 1] = (v >>> 8) & 0xFF;
+        this.data[address + 2] = (v >>> 16) & 0xFF;
+        this.data[address + 3] = (v >>> 24) & 0xFF;
+    }
+
+    // Poke 16-bit without events
+    poke16(address, value) {
+        if (address < 0 || address + 1 >= this.size) return;
+        this.data[address]     = value & 0xFF;
+        this.data[address + 1] = (value >> 8) & 0xFF;
     }
 
     // Load a program (array of bytes) starting at an address
@@ -287,14 +387,14 @@ class Memory {
 
 
 // ============================================================================
-// Registers — Observable register file
+// Registers — Observable 32-bit register file
 // ============================================================================
 
 class Registers {
     constructor(bus, count = NUM_REGISTERS) {
         this.bus = bus;
         this.count = count;
-        this.data = new Int16Array(count); // Signed 16-bit for display, but we mask to 8-bit
+        this.data = new Int32Array(count);
         this._pc = 0;
         this._sp = STACK_START;
     }
@@ -304,7 +404,7 @@ class Registers {
             this.bus.emit('error', { type: 'register', message: `Invalid register: R${index}` });
             return 0;
         }
-        return this.data[index] & 0xFF;
+        return this.data[index];
     }
 
     set(index, value) {
@@ -312,21 +412,21 @@ class Registers {
             this.bus.emit('error', { type: 'register', message: `Invalid register: R${index}` });
             return;
         }
-        const oldValue = this.data[index] & 0xFF;
-        this.data[index] = value & 0xFF;
+        const oldValue = this.data[index];
+        this.data[index] = value | 0;  // Coerce to signed 32-bit
         this.bus.emit('registerChanged', {
             register: index,
             name: REG_NAMES[index],
-            value: this.data[index] & 0xFF,
+            value: this.data[index],
             oldValue
         });
     }
 
-    // Program Counter
+    // Program Counter (16-bit address space for 4KB)
     get pc() { return this._pc; }
     set pc(value) {
         const oldValue = this._pc;
-        this._pc = value & 0xFF;
+        this._pc = value & 0xFFFF;
         this.bus.emit('pcChanged', { value: this._pc, oldValue });
     }
 
@@ -334,14 +434,14 @@ class Registers {
     get sp() { return this._sp; }
     set sp(value) {
         const oldValue = this._sp;
-        this._sp = value & 0xFF;
+        this._sp = value & 0xFFFF;
         this.bus.emit('spChanged', { value: this._sp, oldValue });
     }
 
     // Snapshot for debugger
     snapshot() {
         return {
-            data: new Int16Array(this.data),
+            data: new Int32Array(this.data),
             pc: this._pc,
             sp: this._sp
         };
@@ -403,17 +503,21 @@ class Flags {
         if (old !== this._overflow) this.bus.emit('flagChanged', { flag: 'V', value: this._overflow, oldValue: old });
     }
 
-    // Update flags based on a result value (8-bit)
+    // Update flags based on a 32-bit result
     update(result, a, b, isSub = false) {
-        const r8 = result & 0xFF;
-        this.zero = (r8 === 0);
-        this.negative = !!(r8 & 0x80);
+        const r32 = result | 0;
+        this.zero = (r32 === 0);
+        this.negative = (r32 < 0);
         if (isSub) {
-            this.carry = (a < (b & 0xFF)); // borrow
-            this.overflow = (((a ^ b) & 0x80) !== 0) && (((a ^ r8) & 0x80) !== 0);
+            // For subtraction, carry = borrow (unsigned a < unsigned b)
+            this.carry = ((a >>> 0) < (b >>> 0));
+            // Overflow: sign(a) != sign(b) and sign(result) != sign(a)
+            this.overflow = (((a ^ b) & 0x80000000) !== 0) && (((a ^ r32) & 0x80000000) !== 0);
         } else {
-            this.carry = (result > 0xFF);
-            this.overflow = (((~(a ^ b)) & (a ^ r8) & 0x80) !== 0);
+            // For addition, carry = result overflows 32 bits unsigned
+            const uResult = (a >>> 0) + (b >>> 0);
+            this.carry = (uResult > 0xFFFFFFFF);
+            this.overflow = (((~(a ^ b)) & (a ^ r32) & 0x80000000) !== 0);
         }
     }
 
@@ -448,7 +552,7 @@ class Flags {
 
 
 // ============================================================================
-// ALU — Arithmetic Logic Unit
+// ALU — 32-bit Arithmetic Logic Unit
 // ============================================================================
 
 class ALU {
@@ -460,16 +564,36 @@ class ALU {
         let result;
         let isSub = false;
 
+        // Ensure 32-bit signed
+        a = a | 0;
+        b = b | 0;
+
         switch (operation) {
             case 'ADD':
-                result = (a + b);
+                result = (a + b) | 0;
                 break;
             case 'SUB':
-                result = (a - b);
+                result = (a - b) | 0;
                 isSub = true;
                 break;
             case 'MUL':
-                result = (a * b);
+                result = Math.imul(a, b);
+                break;
+            case 'DIV':
+                if (b === 0) {
+                    this.bus.emit('error', { type: 'alu', message: 'Division by zero' });
+                    result = 0;
+                } else {
+                    result = (a / b) | 0;  // Integer division (truncate toward zero)
+                }
+                break;
+            case 'MOD':
+                if (b === 0) {
+                    this.bus.emit('error', { type: 'alu', message: 'Modulo by zero' });
+                    result = 0;
+                } else {
+                    result = (a % b) | 0;
+                }
                 break;
             case 'AND':
                 result = (a & b);
@@ -484,21 +608,27 @@ class ALU {
                 result = (~a);
                 break;
             case 'SHL':
-                result = (a << b);
+                result = (a << (b & 31));
                 break;
             case 'SHR':
-                result = (a >>> b);
+                result = (a >>> (b & 31));
                 break;
             case 'INC':
-                result = (a + 1);
+                result = (a + 1) | 0;
                 break;
             case 'DEC':
-                result = (a - 1);
+                result = (a - 1) | 0;
                 isSub = true;
                 b = 1;
                 break;
+            case 'NEG':
+                result = (-a) | 0;
+                isSub = true;
+                b = a;
+                a = 0;
+                break;
             case 'CMP':
-                result = (a - b);
+                result = (a - b) | 0;
                 isSub = true;
                 break;
             case 'PASS':
@@ -509,24 +639,21 @@ class ALU {
                 result = 0;
         }
 
-        const result8 = result & 0xFF;
-
         this.bus.emit('aluOperation', {
             operation,
             operandA: a,
             operandB: b,
-            result: result8,
-            rawResult: result,
+            result,
             isSub
         });
 
-        return { result: result8, rawResult: result, isSub, a, b };
+        return { result, isSub, a, b };
     }
 }
 
 
 // ============================================================================
-// Assembler — Converts assembly text to machine code
+// Assembler — Converts assembly instructions to 32-bit machine code
 // ============================================================================
 
 class Assembler {
@@ -608,7 +735,7 @@ class Assembler {
 
     _parseRegister(s) {
         if (typeof s !== 'string') return -1;
-        const m = s.toUpperCase().match(/^R([0-3])$/);
+        const m = s.toUpperCase().match(/^R([0-7])$/);
         return m ? parseInt(m[1]) : -1;
     }
 
@@ -631,60 +758,76 @@ class Assembler {
         return parseInt(s, 10);
     }
 
+    // Helper: push 32-bit little-endian value into bytes array
+    _push32(bytes, value) {
+        const v = value | 0;
+        bytes.push(v & 0xFF);
+        bytes.push((v >>> 8) & 0xFF);
+        bytes.push((v >>> 16) & 0xFF);
+        bytes.push((v >>> 24) & 0xFF);
+    }
+
+    // Helper: push 16-bit little-endian value into bytes array
+    _push16(bytes, value) {
+        bytes.push(value & 0xFF);
+        bytes.push((value >> 8) & 0xFF);
+    }
+
     _getInstructionSize(instr) {
         const mn = instr.mnemonic.toUpperCase();
         const ops = instr.operands || [];
 
-        // Look up from ISA
         switch (mn) {
             case 'NOP': return 1;
             case 'HLT': return 1;
             case 'RET': return 1;
+            case 'SYSCALL': return 2;
             case 'MOV':
-                // MOV Rd, Rs (2 bytes) or MOV Rd, #imm (3 bytes)
                 if (ops.length === 2) {
-                    return this._parseRegister(ops[1]) >= 0 ? 2 : 3;
+                    return this._parseRegister(ops[1]) >= 0 ? 2 : 6;
                 }
                 return -1;
             case 'LOAD':
-                // LOAD Rd, [addr] (3 bytes) or LOAD Rd, [Rs] (2 bytes)
                 if (ops.length === 2) {
-                    return this._parseRegister(ops[1]) >= 0 ? 2 : 3;
+                    return this._parseRegister(ops[1]) >= 0 ? 2 : 4;
                 }
                 return -1;
             case 'STORE':
-                // STORE Rs, [addr] (3 bytes) or STORE Rs, [Rd] (2 bytes)
                 if (ops.length === 2) {
-                    return this._parseRegister(ops[1]) >= 0 ? 2 : 3;
+                    return this._parseRegister(ops[1]) >= 0 ? 2 : 4;
                 }
                 return -1;
-            case 'ADD': case 'SUB': case 'MUL':
+            case 'ADD': case 'SUB': case 'MUL': case 'DIV': case 'MOD':
                 if (ops.length === 2) {
-                    return this._parseRegister(ops[1]) >= 0 ? 2 : 3;
+                    return this._parseRegister(ops[1]) >= 0 ? 2 : 6;
                 }
                 return -1;
-            case 'AND': case 'OR': case 'XOR':
+            case 'AND': case 'OR':
+                if (ops.length === 2) {
+                    return this._parseRegister(ops[1]) >= 0 ? 2 : 6;
+                }
+                return -1;
+            case 'XOR':
                 return 2;
-            case 'NOT': case 'INC': case 'DEC':
+            case 'NOT': case 'INC': case 'DEC': case 'NEG':
                 return 2;
             case 'SHL': case 'SHR':
                 return 3;
             case 'CMP':
                 if (ops.length === 2) {
-                    return this._parseRegister(ops[1]) >= 0 ? 2 : 3;
+                    return this._parseRegister(ops[1]) >= 0 ? 2 : 6;
                 }
                 return -1;
             case 'JMP': case 'JZ': case 'JNZ': case 'JG': case 'JL': case 'JGE': case 'JLE':
-                return 2;
+                return 3;
             case 'PUSH':
-                return 2;
+                return this._parseRegister(ops[0]) >= 0 ? 2 : 5;
             case 'POP':
                 return 2;
             case 'CALL':
-                return 2;
+                return 3;
             case 'OUT':
-                // OUT Rs (2 bytes) or OUT #imm (2 bytes)
-                return 2;
+                return this._parseRegister(ops[0]) >= 0 ? 2 : 5;
             default:
                 return -1;
         }
@@ -711,6 +854,14 @@ class Assembler {
                 bytes.push(OP.RET);
                 break;
 
+            case 'SYSCALL': {
+                const id = this._parseImmediate(ops[0], labels);
+                if (isNaN(id)) return { error: `SYSCALL: invalid id: ${ops[0]}` };
+                bytes.push(OP.SYSCALL);
+                bytes.push(id & 0xFF);
+                break;
+            }
+
             case 'MOV':
                 if (rd < 0) return { error: `MOV: invalid destination register: ${ops[0]}` };
                 if (rs >= 0) {
@@ -718,12 +869,12 @@ class Assembler {
                     bytes.push(OP.MOV_RR);
                     bytes.push((rd << 4) | rs);
                 } else {
-                    // MOV Rd, #imm
+                    // MOV Rd, #imm32
                     const imm = this._parseImmediate(ops[1], labels);
                     if (isNaN(imm)) return { error: `MOV: invalid immediate: ${ops[1]}` };
                     bytes.push(OP.MOV_RI);
                     bytes.push(rd);
-                    bytes.push(imm & 0xFF);
+                    this._push32(bytes, imm);
                 }
                 break;
 
@@ -735,12 +886,12 @@ class Assembler {
                     bytes.push(OP.LOAD_RR);
                     bytes.push((rd << 4) | srcReg);
                 } else {
-                    // LOAD Rd, [addr]
+                    // LOAD Rd, [addr16]
                     const addr = this._parseImmediate(ops[1], labels);
                     if (isNaN(addr)) return { error: `LOAD: invalid address: ${ops[1]}` };
                     bytes.push(OP.LOAD);
                     bytes.push(rd);
-                    bytes.push(addr & 0xFF);
+                    this._push16(bytes, addr);
                 }
                 break;
             }
@@ -754,22 +905,24 @@ class Assembler {
                     bytes.push(OP.STORE_RR);
                     bytes.push((dstReg << 4) | srcReg2);
                 } else {
-                    // STORE Rs, [addr]
+                    // STORE Rs, [addr16]
                     const addr2 = this._parseImmediate(ops[1], labels);
                     if (isNaN(addr2)) return { error: `STORE: invalid address: ${ops[1]}` };
                     bytes.push(OP.STORE);
                     bytes.push(srcReg2);
-                    bytes.push(addr2 & 0xFF);
+                    this._push16(bytes, addr2);
                 }
                 break;
             }
 
-            case 'ADD': case 'SUB': case 'MUL': {
+            case 'ADD': case 'SUB': case 'MUL': case 'DIV': case 'MOD': {
                 if (rd < 0) return { error: `${mn}: invalid destination register: ${ops[0]}` };
                 const opcodes = {
                     'ADD': [OP.ADD_RR, OP.ADD_RI],
                     'SUB': [OP.SUB_RR, OP.SUB_RI],
                     'MUL': [OP.MUL_RR, OP.MUL_RI],
+                    'DIV': [OP.DIV_RR, OP.DIV_RI],
+                    'MOD': [OP.MOD_RR, OP.MOD_RI],
                 };
                 if (rs >= 0) {
                     bytes.push(opcodes[mn][0]);
@@ -779,23 +932,39 @@ class Assembler {
                     if (isNaN(imm)) return { error: `${mn}: invalid immediate: ${ops[1]}` };
                     bytes.push(opcodes[mn][1]);
                     bytes.push(rd);
-                    bytes.push(imm & 0xFF);
+                    this._push32(bytes, imm);
                 }
                 break;
             }
 
-            case 'INC': case 'DEC': case 'NOT': {
+            case 'INC': case 'DEC': case 'NOT': case 'NEG': {
                 if (rd < 0) return { error: `${mn}: invalid register: ${ops[0]}` };
-                const opMap = { 'INC': OP.INC, 'DEC': OP.DEC, 'NOT': OP.NOT };
+                const opMap = { 'INC': OP.INC, 'DEC': OP.DEC, 'NOT': OP.NOT, 'NEG': OP.NEG };
                 bytes.push(opMap[mn]);
                 bytes.push(rd);
                 break;
             }
 
-            case 'AND': case 'OR': case 'XOR': {
-                if (rd < 0 || rs < 0) return { error: `${mn}: requires two registers` };
-                const logicMap = { 'AND': OP.AND_RR, 'OR': OP.OR_RR, 'XOR': OP.XOR_RR };
-                bytes.push(logicMap[mn]);
+            case 'AND': case 'OR': {
+                if (rd < 0) return { error: `${mn}: invalid destination register: ${ops[0]}` };
+                if (rs >= 0) {
+                    const logicMap = { 'AND': OP.AND_RR, 'OR': OP.OR_RR };
+                    bytes.push(logicMap[mn]);
+                    bytes.push((rd << 4) | rs);
+                } else {
+                    const imm = this._parseImmediate(ops[1], labels);
+                    if (isNaN(imm)) return { error: `${mn}: invalid immediate: ${ops[1]}` };
+                    const logicImmMap = { 'AND': OP.AND_RI, 'OR': OP.OR_RI };
+                    bytes.push(logicImmMap[mn]);
+                    bytes.push(rd);
+                    this._push32(bytes, imm);
+                }
+                break;
+            }
+
+            case 'XOR': {
+                if (rd < 0 || rs < 0) return { error: `XOR: requires two registers` };
+                bytes.push(OP.XOR_RR);
                 bytes.push((rd << 4) | rs);
                 break;
             }
@@ -820,7 +989,7 @@ class Assembler {
                     if (isNaN(imm)) return { error: `CMP: invalid immediate: ${ops[1]}` };
                     bytes.push(OP.CMP_RI);
                     bytes.push(rd);
-                    bytes.push(imm & 0xFF);
+                    this._push32(bytes, imm);
                 }
                 break;
             }
@@ -833,7 +1002,7 @@ class Assembler {
                 const target = this._parseImmediate(ops[0], labels);
                 if (isNaN(target)) return { error: `${mn}: invalid target: ${ops[0]}` };
                 bytes.push(jmpMap[mn]);
-                bytes.push(target & 0xFF);
+                this._push16(bytes, target);
                 break;
             }
 
@@ -846,7 +1015,7 @@ class Assembler {
                     const imm = this._parseImmediate(ops[0], labels);
                     if (isNaN(imm)) return { error: `PUSH: invalid operand: ${ops[0]}` };
                     bytes.push(OP.PUSH_I);
-                    bytes.push(imm & 0xFF);
+                    this._push32(bytes, imm);
                 }
                 break;
             }
@@ -862,7 +1031,7 @@ class Assembler {
                 const target = this._parseImmediate(ops[0], labels);
                 if (isNaN(target)) return { error: `CALL: invalid target: ${ops[0]}` };
                 bytes.push(OP.CALL);
-                bytes.push(target & 0xFF);
+                this._push16(bytes, target);
                 break;
             }
 
@@ -875,7 +1044,7 @@ class Assembler {
                     const imm = this._parseImmediate(ops[0], labels);
                     if (isNaN(imm)) return { error: `OUT: invalid operand: ${ops[0]}` };
                     bytes.push(OP.OUT_I);
-                    bytes.push(imm & 0xFF);
+                    this._push32(bytes, imm);
                 }
                 break;
             }
@@ -896,60 +1065,7 @@ class Assembler {
     }
 
     /**
-     * Parse assembly text into instruction objects
-     */
-    parseText(text) {
-        const lines = text.split('\n');
-        const instructions = [];
-
-        for (let i = 0; i < lines.length; i++) {
-            let line = lines[i].trim();
-
-            // Remove comments
-            const commentIdx = line.indexOf(';');
-            if (commentIdx >= 0) line = line.substring(0, commentIdx).trim();
-            if (line === '') continue;
-
-            let label = null;
-
-            // Check for label
-            const labelMatch = line.match(/^([a-zA-Z_]\w*):\s*(.*)/);
-            if (labelMatch) {
-                label = labelMatch[1];
-                line = labelMatch[2].trim();
-            }
-
-            if (line === '' && label) {
-                // Label-only line
-                instructions.push({ label, mnemonic: null, operands: [], sourceLine: i + 1 });
-                continue;
-            }
-
-            if (line === '') continue;
-
-            // Parse mnemonic and operands
-            const parts = line.split(/\s+/);
-            const mnemonic = parts[0].toUpperCase();
-            const operandStr = parts.slice(1).join(' ');
-            const operands = operandStr ? operandStr.split(',').map(s => s.trim()).filter(s => s) : [];
-
-            instructions.push({ label, mnemonic, operands, sourceLine: i + 1 });
-        }
-
-        return instructions;
-    }
-
-    /**
-     * Assemble text directly
-     */
-    assembleText(text) {
-        const parsed = this.parseText(text);
-        return this.assemble(parsed);
-    }
-
-    /**
      * Disassemble bytes starting at an address
-     * Returns a human-readable string for one instruction
      */
     disassemble(memory, address) {
         const opcode = memory.peek(address);
@@ -967,8 +1083,8 @@ class Assembler {
                 break;
             case 'rr': {
                 const byte2 = memory.peek(address + 1);
-                const rd = (byte2 >> 4) & 0x03;
-                const rs = byte2 & 0x03;
+                const rd = (byte2 >> 4) & 0x07;
+                const rs = byte2 & 0x07;
                 if (opcode === OP.LOAD_RR) {
                     text += ` R${rd}, [R${rs}]`;
                 } else if (opcode === OP.STORE_RR) {
@@ -978,33 +1094,44 @@ class Assembler {
                 }
                 break;
             }
-            case 'ri': {
-                const rd = memory.peek(address + 1) & 0x03;
+            case 'ri32': {
+                const rd = memory.peek(address + 1) & 0x07;
+                const imm = memory.peek32(address + 2);
+                text += ` R${rd}, ${imm}`;
+                break;
+            }
+            case 'ri8': {
+                const rd = memory.peek(address + 1) & 0x07;
                 const imm = memory.peek(address + 2);
                 text += ` R${rd}, ${imm}`;
                 break;
             }
-            case 'ra': {
-                const rd = memory.peek(address + 1) & 0x03;
-                const addr = memory.peek(address + 2);
+            case 'ra16': {
+                const rd = memory.peek(address + 1) & 0x07;
+                const addr = memory.peek16(address + 2);
                 if (opcode === OP.STORE) {
-                    text += ` R${rd}, [0x${addr.toString(16).toUpperCase().padStart(2, '0')}]`;
+                    text += ` R${rd}, [0x${addr.toString(16).toUpperCase().padStart(3, '0')}]`;
                 } else {
-                    text += ` R${rd}, [0x${addr.toString(16).toUpperCase().padStart(2, '0')}]`;
+                    text += ` R${rd}, [0x${addr.toString(16).toUpperCase().padStart(3, '0')}]`;
                 }
                 break;
             }
             case 'r': {
-                const rd = memory.peek(address + 1) & 0x03;
+                const rd = memory.peek(address + 1) & 0x07;
                 text += ` R${rd}`;
                 break;
             }
-            case 'addr': {
-                const addr = memory.peek(address + 1);
-                text += ` 0x${addr.toString(16).toUpperCase().padStart(2, '0')}`;
+            case 'addr16': {
+                const addr = memory.peek16(address + 1);
+                text += ` 0x${addr.toString(16).toUpperCase().padStart(3, '0')}`;
                 break;
             }
-            case 'imm': {
+            case 'imm32': {
+                const imm = memory.peek32(address + 1);
+                text += ` ${imm}`;
+                break;
+            }
+            case 'imm8': {
                 const imm = memory.peek(address + 1);
                 text += ` ${imm}`;
                 break;
@@ -1017,7 +1144,7 @@ class Assembler {
 
 
 // ============================================================================
-// CPU — The processor
+// CPU — The 32-bit processor
 // ============================================================================
 
 class CPU {
@@ -1032,15 +1159,15 @@ class CPU {
         this._halted = false;
         this._running = false;
         this._cycleCount = 0;
-        this._maxCycles = 10000; // Safety limit
+        this._maxCycles = 50000; // Safety limit (higher for 32-bit programs)
         this._breakpoints = new Set();
         this._trace = [];
         this._maxTrace = 500;
-        this._snapshots = []; // For timeline/time-travel debugging
+        this._snapshots = [];
         this._maxSnapshots = 200;
-        this._speed = 5; // Steps per second (for animated execution)
+        this._speed = 5;
         this._animationFrame = null;
-        this._programEnd = 0; // End of loaded program
+        this._programEnd = 0;
 
         // Output buffer
         this._output = [];
@@ -1075,7 +1202,6 @@ class CPU {
 
     // ─── Load Program ───────────────────────────────────────────────────
     loadProgram(bytes) {
-        // Don't fully reset — preserve memory clear, but reset registers
         this._halted = false;
         this._running = false;
         this._cycleCount = 0;
@@ -1116,15 +1242,23 @@ class CPU {
         this._halted = snap.halted;
         this._output = snap.output.slice();
         this._cycleCount = snap.cycle;
-        // Trim snapshots to this point
         this._snapshots = this._snapshots.slice(0, index + 1);
-        // Trim trace to this cycle
         this._trace = this._trace.filter(t => t.cycle <= snap.cycle);
         this.bus.emit('snapshotRestored', { cycle: snap.cycle, index });
         return true;
     }
 
     get snapshots() { return this._snapshots; }
+
+    // Helper to format addresses
+    _fmtAddr(addr) {
+        return '0x' + (addr & 0xFFFF).toString(16).toUpperCase().padStart(3, '0');
+    }
+
+    // Helper to format 32-bit values
+    _fmtVal(val) {
+        return val.toString();
+    }
 
     // ─── Step — Execute one instruction ─────────────────────────────────
     step() {
@@ -1216,8 +1350,8 @@ class CPU {
 
             case OP.MOV_RR: {
                 const byte2 = this.memory.peek(pc + 1);
-                const rd = (byte2 >> 4) & 0x03;
-                const rs = byte2 & 0x03;
+                const rd = (byte2 >> 4) & 0x07;
+                const rs = byte2 & 0x07;
                 const val = this.registers.get(rs);
                 this.registers.set(rd, val);
                 text = `MOV R${rd}, R${rs}`;
@@ -1228,50 +1362,50 @@ class CPU {
             }
 
             case OP.MOV_RI: {
-                const rd = this.memory.peek(pc + 1) & 0x03;
-                const imm = this.memory.peek(pc + 2);
+                const rd = this.memory.peek(pc + 1) & 0x07;
+                const imm = this.memory.peek32(pc + 2);
                 this.registers.set(rd, imm);
                 text = `MOV R${rd}, ${imm}`;
                 description = `R${rd} = ${imm}`;
                 changes.rd = rd;
-                this.registers.pc = pc + 3;
+                this.registers.pc = pc + 6;
                 break;
             }
 
             case OP.LOAD: {
-                const rd = this.memory.peek(pc + 1) & 0x03;
-                const addr = this.memory.peek(pc + 2);
-                const val = this.memory.read(addr);
+                const rd = this.memory.peek(pc + 1) & 0x07;
+                const addr = this.memory.peek16(pc + 2);
+                const val = this.memory.read32(addr);
                 this.registers.set(rd, val);
-                text = `LOAD R${rd}, [0x${addr.toString(16).toUpperCase().padStart(2, '0')}]`;
-                description = `R${rd} = mem[0x${addr.toString(16).toUpperCase().padStart(2, '0')}] = ${val}`;
+                text = `LOAD R${rd}, [${this._fmtAddr(addr)}]`;
+                description = `R${rd} = mem[${this._fmtAddr(addr)}] = ${val}`;
                 changes.rd = rd;
                 changes.memRead = addr;
-                this.registers.pc = pc + 3;
+                this.registers.pc = pc + 4;
                 break;
             }
 
             case OP.STORE: {
-                const rs = this.memory.peek(pc + 1) & 0x03;
-                const addr = this.memory.peek(pc + 2);
+                const rs = this.memory.peek(pc + 1) & 0x07;
+                const addr = this.memory.peek16(pc + 2);
                 const val = this.registers.get(rs);
-                this.memory.write(addr, val);
-                text = `STORE R${rs}, [0x${addr.toString(16).toUpperCase().padStart(2, '0')}]`;
-                description = `mem[0x${addr.toString(16).toUpperCase().padStart(2, '0')}] = R${rs} = ${val}`;
+                this.memory.write32(addr, val);
+                text = `STORE R${rs}, [${this._fmtAddr(addr)}]`;
+                description = `mem[${this._fmtAddr(addr)}] = R${rs} = ${val}`;
                 changes.memWrite = addr;
-                this.registers.pc = pc + 3;
+                this.registers.pc = pc + 4;
                 break;
             }
 
             case OP.LOAD_RR: {
                 const byte2 = this.memory.peek(pc + 1);
-                const rd = (byte2 >> 4) & 0x03;
-                const rs = byte2 & 0x03;
-                const addr = this.registers.get(rs);
-                const val = this.memory.read(addr);
+                const rd = (byte2 >> 4) & 0x07;
+                const rs = byte2 & 0x07;
+                const addr = this.registers.get(rs) & 0xFFFF;
+                const val = this.memory.read32(addr);
                 this.registers.set(rd, val);
                 text = `LOAD R${rd}, [R${rs}]`;
-                description = `R${rd} = mem[R${rs}] = mem[${addr}] = ${val}`;
+                description = `R${rd} = mem[R${rs}] = mem[${this._fmtAddr(addr)}] = ${val}`;
                 changes.rd = rd;
                 changes.memRead = addr;
                 this.registers.pc = pc + 2;
@@ -1280,57 +1414,66 @@ class CPU {
 
             case OP.STORE_RR: {
                 const byte2 = this.memory.peek(pc + 1);
-                const rd = (byte2 >> 4) & 0x03;
-                const rs = byte2 & 0x03;
+                const rd = (byte2 >> 4) & 0x07;
+                const rs = byte2 & 0x07;
                 const val = this.registers.get(rs);
-                const addr = this.registers.get(rd);
-                this.memory.write(addr, val);
+                const addr = this.registers.get(rd) & 0xFFFF;
+                this.memory.write32(addr, val);
                 text = `STORE R${rs}, [R${rd}]`;
-                description = `mem[R${rd}] = mem[${addr}] = R${rs} = ${val}`;
+                description = `mem[R${rd}] = mem[${this._fmtAddr(addr)}] = R${rs} = ${val}`;
                 changes.memWrite = addr;
                 this.registers.pc = pc + 2;
                 break;
             }
 
-            // Arithmetic
-            case OP.ADD_RR: case OP.SUB_RR: case OP.MUL_RR: {
+            // Arithmetic: register-register
+            case OP.ADD_RR: case OP.SUB_RR: case OP.MUL_RR: case OP.DIV_RR: case OP.MOD_RR: {
                 const byte2 = this.memory.peek(pc + 1);
-                const rd = (byte2 >> 4) & 0x03;
-                const rs = byte2 & 0x03;
+                const rd = (byte2 >> 4) & 0x07;
+                const rs = byte2 & 0x07;
                 const a = this.registers.get(rd);
                 const b = this.registers.get(rs);
-                const opName = opcode === OP.ADD_RR ? 'ADD' : opcode === OP.SUB_RR ? 'SUB' : 'MUL';
+                const opName = {
+                    [OP.ADD_RR]: 'ADD', [OP.SUB_RR]: 'SUB', [OP.MUL_RR]: 'MUL',
+                    [OP.DIV_RR]: 'DIV', [OP.MOD_RR]: 'MOD'
+                }[opcode];
+                const sym = { 'ADD': '+', 'SUB': '-', 'MUL': '*', 'DIV': '/', 'MOD': '%' }[opName];
                 const aluResult = this.alu.execute(opName, a, b);
                 this.registers.set(rd, aluResult.result);
-                this.flags.update(aluResult.rawResult, a, b, aluResult.isSub);
+                this.flags.update(aluResult.result, a, b, aluResult.isSub);
                 text = `${opName} R${rd}, R${rs}`;
-                description = `R${rd} = ${a} ${opName === 'ADD' ? '+' : opName === 'SUB' ? '-' : '*'} ${b} = ${aluResult.result}`;
+                description = `R${rd} = ${a} ${sym} ${b} = ${aluResult.result}`;
                 changes.rd = rd;
                 this.registers.pc = pc + 2;
                 break;
             }
 
-            case OP.ADD_RI: case OP.SUB_RI: case OP.MUL_RI: {
-                const rd = this.memory.peek(pc + 1) & 0x03;
-                const imm = this.memory.peek(pc + 2);
+            // Arithmetic: register-immediate
+            case OP.ADD_RI: case OP.SUB_RI: case OP.MUL_RI: case OP.DIV_RI: case OP.MOD_RI: {
+                const rd = this.memory.peek(pc + 1) & 0x07;
+                const imm = this.memory.peek32(pc + 2);
                 const a = this.registers.get(rd);
-                const opName = opcode === OP.ADD_RI ? 'ADD' : opcode === OP.SUB_RI ? 'SUB' : 'MUL';
+                const opName = {
+                    [OP.ADD_RI]: 'ADD', [OP.SUB_RI]: 'SUB', [OP.MUL_RI]: 'MUL',
+                    [OP.DIV_RI]: 'DIV', [OP.MOD_RI]: 'MOD'
+                }[opcode];
+                const sym = { 'ADD': '+', 'SUB': '-', 'MUL': '*', 'DIV': '/', 'MOD': '%' }[opName];
                 const aluResult = this.alu.execute(opName, a, imm);
                 this.registers.set(rd, aluResult.result);
-                this.flags.update(aluResult.rawResult, a, imm, aluResult.isSub);
+                this.flags.update(aluResult.result, a, imm, aluResult.isSub);
                 text = `${opName} R${rd}, ${imm}`;
-                description = `R${rd} = ${a} ${opName === 'ADD' ? '+' : opName === 'SUB' ? '-' : '*'} ${imm} = ${aluResult.result}`;
+                description = `R${rd} = ${a} ${sym} ${imm} = ${aluResult.result}`;
                 changes.rd = rd;
-                this.registers.pc = pc + 3;
+                this.registers.pc = pc + 6;
                 break;
             }
 
             case OP.INC: {
-                const rd = this.memory.peek(pc + 1) & 0x03;
+                const rd = this.memory.peek(pc + 1) & 0x07;
                 const a = this.registers.get(rd);
                 const aluResult = this.alu.execute('INC', a);
                 this.registers.set(rd, aluResult.result);
-                this.flags.update(aluResult.rawResult, a, 1, false);
+                this.flags.update(aluResult.result, a, 1, false);
                 text = `INC R${rd}`;
                 description = `R${rd} = ${a} + 1 = ${aluResult.result}`;
                 changes.rd = rd;
@@ -1339,13 +1482,26 @@ class CPU {
             }
 
             case OP.DEC: {
-                const rd = this.memory.peek(pc + 1) & 0x03;
+                const rd = this.memory.peek(pc + 1) & 0x07;
                 const a = this.registers.get(rd);
                 const aluResult = this.alu.execute('DEC', a);
                 this.registers.set(rd, aluResult.result);
-                this.flags.update(aluResult.rawResult, a, 1, true);
+                this.flags.update(aluResult.result, a, 1, true);
                 text = `DEC R${rd}`;
                 description = `R${rd} = ${a} - 1 = ${aluResult.result}`;
+                changes.rd = rd;
+                this.registers.pc = pc + 2;
+                break;
+            }
+
+            case OP.NEG: {
+                const rd = this.memory.peek(pc + 1) & 0x07;
+                const a = this.registers.get(rd);
+                const aluResult = this.alu.execute('NEG', a);
+                this.registers.set(rd, aluResult.result);
+                this.flags.update(aluResult.result, 0, a, true);
+                text = `NEG R${rd}`;
+                description = `R${rd} = -${a} = ${aluResult.result}`;
                 changes.rd = rd;
                 this.registers.pc = pc + 2;
                 break;
@@ -1354,14 +1510,14 @@ class CPU {
             // Logic
             case OP.AND_RR: case OP.OR_RR: case OP.XOR_RR: {
                 const byte2 = this.memory.peek(pc + 1);
-                const rd = (byte2 >> 4) & 0x03;
-                const rs = byte2 & 0x03;
+                const rd = (byte2 >> 4) & 0x07;
+                const rs = byte2 & 0x07;
                 const a = this.registers.get(rd);
                 const b = this.registers.get(rs);
                 const opName = opcode === OP.AND_RR ? 'AND' : opcode === OP.OR_RR ? 'OR' : 'XOR';
                 const aluResult = this.alu.execute(opName, a, b);
                 this.registers.set(rd, aluResult.result);
-                this.flags.update(aluResult.rawResult, a, b);
+                this.flags.update(aluResult.result, a, b);
                 text = `${opName} R${rd}, R${rs}`;
                 const sym = opName === 'AND' ? '&' : opName === 'OR' ? '|' : '^';
                 description = `R${rd} = ${a} ${sym} ${b} = ${aluResult.result}`;
@@ -1370,12 +1526,28 @@ class CPU {
                 break;
             }
 
+            case OP.AND_RI: case OP.OR_RI: {
+                const rd = this.memory.peek(pc + 1) & 0x07;
+                const imm = this.memory.peek32(pc + 2);
+                const a = this.registers.get(rd);
+                const opName = opcode === OP.AND_RI ? 'AND' : 'OR';
+                const aluResult = this.alu.execute(opName, a, imm);
+                this.registers.set(rd, aluResult.result);
+                this.flags.update(aluResult.result, a, imm);
+                text = `${opName} R${rd}, ${imm}`;
+                const sym = opName === 'AND' ? '&' : '|';
+                description = `R${rd} = ${a} ${sym} ${imm} = ${aluResult.result}`;
+                changes.rd = rd;
+                this.registers.pc = pc + 6;
+                break;
+            }
+
             case OP.NOT: {
-                const rd = this.memory.peek(pc + 1) & 0x03;
+                const rd = this.memory.peek(pc + 1) & 0x07;
                 const a = this.registers.get(rd);
                 const aluResult = this.alu.execute('NOT', a);
                 this.registers.set(rd, aluResult.result);
-                this.flags.update(aluResult.rawResult, a, 0);
+                this.flags.update(aluResult.result, a, 0);
                 text = `NOT R${rd}`;
                 description = `R${rd} = ~${a} = ${aluResult.result}`;
                 changes.rd = rd;
@@ -1384,13 +1556,13 @@ class CPU {
             }
 
             case OP.SHL: case OP.SHR: {
-                const rd = this.memory.peek(pc + 1) & 0x03;
+                const rd = this.memory.peek(pc + 1) & 0x07;
                 const imm = this.memory.peek(pc + 2);
                 const a = this.registers.get(rd);
                 const opName = opcode === OP.SHL ? 'SHL' : 'SHR';
                 const aluResult = this.alu.execute(opName, a, imm);
                 this.registers.set(rd, aluResult.result);
-                this.flags.update(aluResult.rawResult, a, imm);
+                this.flags.update(aluResult.result, a, imm);
                 text = `${opName} R${rd}, ${imm}`;
                 description = `R${rd} = ${a} ${opName === 'SHL' ? '<<' : '>>'} ${imm} = ${aluResult.result}`;
                 changes.rd = rd;
@@ -1401,12 +1573,12 @@ class CPU {
             // Comparison
             case OP.CMP_RR: {
                 const byte2 = this.memory.peek(pc + 1);
-                const rd = (byte2 >> 4) & 0x03;
-                const rs = byte2 & 0x03;
+                const rd = (byte2 >> 4) & 0x07;
+                const rs = byte2 & 0x07;
                 const a = this.registers.get(rd);
                 const b = this.registers.get(rs);
                 const aluResult = this.alu.execute('CMP', a, b);
-                this.flags.update(aluResult.rawResult, a, b, true);
+                this.flags.update(aluResult.result, a, b, true);
                 text = `CMP R${rd}, R${rs}`;
                 description = `Compare ${a} - ${b} = ${aluResult.result} ${this.flags.toString()}`;
                 this.registers.pc = pc + 2;
@@ -1414,138 +1586,138 @@ class CPU {
             }
 
             case OP.CMP_RI: {
-                const rd = this.memory.peek(pc + 1) & 0x03;
-                const imm = this.memory.peek(pc + 2);
+                const rd = this.memory.peek(pc + 1) & 0x07;
+                const imm = this.memory.peek32(pc + 2);
                 const a = this.registers.get(rd);
                 const aluResult = this.alu.execute('CMP', a, imm);
-                this.flags.update(aluResult.rawResult, a, imm, true);
+                this.flags.update(aluResult.result, a, imm, true);
                 text = `CMP R${rd}, ${imm}`;
                 description = `Compare ${a} - ${imm} = ${aluResult.result} ${this.flags.toString()}`;
-                this.registers.pc = pc + 3;
+                this.registers.pc = pc + 6;
                 break;
             }
 
             // Branching
             case OP.JMP: {
-                const addr = this.memory.peek(pc + 1);
+                const addr = this.memory.peek16(pc + 1);
                 this.registers.pc = addr;
-                text = `JMP 0x${addr.toString(16).toUpperCase().padStart(2, '0')}`;
-                description = `PC = 0x${addr.toString(16).toUpperCase().padStart(2, '0')}`;
+                text = `JMP ${this._fmtAddr(addr)}`;
+                description = `PC = ${this._fmtAddr(addr)}`;
                 break;
             }
 
             case OP.JZ: {
-                const addr = this.memory.peek(pc + 1);
-                text = `JZ 0x${addr.toString(16).toUpperCase().padStart(2, '0')}`;
+                const addr = this.memory.peek16(pc + 1);
+                text = `JZ ${this._fmtAddr(addr)}`;
                 if (this.flags.zero) {
                     this.registers.pc = addr;
-                    description = `ZF=1 → Jump to 0x${addr.toString(16).toUpperCase().padStart(2, '0')}`;
+                    description = `ZF=1 → Jump to ${this._fmtAddr(addr)}`;
                 } else {
-                    this.registers.pc = pc + 2;
+                    this.registers.pc = pc + 3;
                     description = `ZF=0 → No jump`;
                 }
                 break;
             }
 
             case OP.JNZ: {
-                const addr = this.memory.peek(pc + 1);
-                text = `JNZ 0x${addr.toString(16).toUpperCase().padStart(2, '0')}`;
+                const addr = this.memory.peek16(pc + 1);
+                text = `JNZ ${this._fmtAddr(addr)}`;
                 if (!this.flags.zero) {
                     this.registers.pc = addr;
-                    description = `ZF=0 → Jump to 0x${addr.toString(16).toUpperCase().padStart(2, '0')}`;
+                    description = `ZF=0 → Jump to ${this._fmtAddr(addr)}`;
                 } else {
-                    this.registers.pc = pc + 2;
+                    this.registers.pc = pc + 3;
                     description = `ZF=1 → No jump`;
                 }
                 break;
             }
 
             case OP.JG: {
-                const addr = this.memory.peek(pc + 1);
-                text = `JG 0x${addr.toString(16).toUpperCase().padStart(2, '0')}`;
+                const addr = this.memory.peek16(pc + 1);
+                text = `JG ${this._fmtAddr(addr)}`;
                 if (!this.flags.zero && !this.flags.negative) {
                     this.registers.pc = addr;
                     description = `Greater → Jump`;
                 } else {
-                    this.registers.pc = pc + 2;
+                    this.registers.pc = pc + 3;
                     description = `Not greater → No jump`;
                 }
                 break;
             }
 
             case OP.JL: {
-                const addr = this.memory.peek(pc + 1);
-                text = `JL 0x${addr.toString(16).toUpperCase().padStart(2, '0')}`;
+                const addr = this.memory.peek16(pc + 1);
+                text = `JL ${this._fmtAddr(addr)}`;
                 if (this.flags.negative) {
                     this.registers.pc = addr;
                     description = `Less → Jump`;
                 } else {
-                    this.registers.pc = pc + 2;
+                    this.registers.pc = pc + 3;
                     description = `Not less → No jump`;
                 }
                 break;
             }
 
             case OP.JGE: {
-                const addr = this.memory.peek(pc + 1);
-                text = `JGE 0x${addr.toString(16).toUpperCase().padStart(2, '0')}`;
+                const addr = this.memory.peek16(pc + 1);
+                text = `JGE ${this._fmtAddr(addr)}`;
                 if (this.flags.zero || !this.flags.negative) {
                     this.registers.pc = addr;
                     description = `Greater or equal → Jump`;
                 } else {
-                    this.registers.pc = pc + 2;
+                    this.registers.pc = pc + 3;
                     description = `Less → No jump`;
                 }
                 break;
             }
 
             case OP.JLE: {
-                const addr = this.memory.peek(pc + 1);
-                text = `JLE 0x${addr.toString(16).toUpperCase().padStart(2, '0')}`;
+                const addr = this.memory.peek16(pc + 1);
+                text = `JLE ${this._fmtAddr(addr)}`;
                 if (this.flags.zero || this.flags.negative) {
                     this.registers.pc = addr;
                     description = `Less or equal → Jump`;
                 } else {
-                    this.registers.pc = pc + 2;
+                    this.registers.pc = pc + 3;
                     description = `Greater → No jump`;
                 }
                 break;
             }
 
-            // Stack
+            // Stack (32-bit push/pop)
             case OP.PUSH: {
-                const rs = this.memory.peek(pc + 1) & 0x03;
+                const rs = this.memory.peek(pc + 1) & 0x07;
                 const val = this.registers.get(rs);
-                const sp = this.registers.sp;
-                this.memory.write(sp, val);
-                this.registers.sp = sp - 1;
+                const sp = this.registers.sp - WORD_SIZE;
+                this.registers.sp = sp;
+                this.memory.write32(sp, val);
                 text = `PUSH R${rs}`;
-                description = `mem[0x${sp.toString(16).toUpperCase().padStart(2, '0')}] = R${rs} = ${val}, SP = 0x${(sp - 1).toString(16).toUpperCase().padStart(2, '0')}`;
+                description = `SP=${this._fmtAddr(sp)}, mem[SP] = R${rs} = ${val}`;
                 changes.memWrite = sp;
                 this.registers.pc = pc + 2;
                 break;
             }
 
             case OP.PUSH_I: {
-                const imm = this.memory.peek(pc + 1);
-                const sp = this.registers.sp;
-                this.memory.write(sp, imm);
-                this.registers.sp = sp - 1;
+                const imm = this.memory.peek32(pc + 1);
+                const sp = this.registers.sp - WORD_SIZE;
+                this.registers.sp = sp;
+                this.memory.write32(sp, imm);
                 text = `PUSH ${imm}`;
-                description = `mem[0x${sp.toString(16).toUpperCase().padStart(2, '0')}] = ${imm}, SP = 0x${(sp - 1).toString(16).toUpperCase().padStart(2, '0')}`;
+                description = `SP=${this._fmtAddr(sp)}, mem[SP] = ${imm}`;
                 changes.memWrite = sp;
-                this.registers.pc = pc + 2;
+                this.registers.pc = pc + 5;
                 break;
             }
 
             case OP.POP: {
-                const rd = this.memory.peek(pc + 1) & 0x03;
-                const sp = this.registers.sp + 1;
-                this.registers.sp = sp;
-                const val = this.memory.read(sp);
+                const rd = this.memory.peek(pc + 1) & 0x07;
+                const sp = this.registers.sp;
+                const val = this.memory.read32(sp);
                 this.registers.set(rd, val);
+                this.registers.sp = sp + WORD_SIZE;
                 text = `POP R${rd}`;
-                description = `SP = 0x${sp.toString(16).toUpperCase().padStart(2, '0')}, R${rd} = mem[SP] = ${val}`;
+                description = `R${rd} = mem[${this._fmtAddr(sp)}] = ${val}, SP=${this._fmtAddr(sp + WORD_SIZE)}`;
                 changes.rd = rd;
                 changes.memRead = sp;
                 this.registers.pc = pc + 2;
@@ -1554,47 +1726,95 @@ class CPU {
 
             // Subroutines
             case OP.CALL: {
-                const addr = this.memory.peek(pc + 1);
-                const returnAddr = pc + 2;
-                const sp = this.registers.sp;
-                this.memory.write(sp, returnAddr);
-                this.registers.sp = sp - 1;
+                const addr = this.memory.peek16(pc + 1);
+                const returnAddr = pc + 3;
+                const sp = this.registers.sp - WORD_SIZE;
+                this.registers.sp = sp;
+                this.memory.write32(sp, returnAddr);
                 this.registers.pc = addr;
-                text = `CALL 0x${addr.toString(16).toUpperCase().padStart(2, '0')}`;
-                description = `Push return addr 0x${returnAddr.toString(16).toUpperCase().padStart(2, '0')}, jump to 0x${addr.toString(16).toUpperCase().padStart(2, '0')}`;
+                text = `CALL ${this._fmtAddr(addr)}`;
+                description = `Push return ${this._fmtAddr(returnAddr)}, jump to ${this._fmtAddr(addr)}`;
                 changes.memWrite = sp;
                 break;
             }
 
             case OP.RET: {
-                const sp = this.registers.sp + 1;
-                this.registers.sp = sp;
-                const returnAddr = this.memory.read(sp);
-                this.registers.pc = returnAddr;
+                const sp = this.registers.sp;
+                const returnAddr = this.memory.read32(sp);
+                this.registers.sp = sp + WORD_SIZE;
+                this.registers.pc = returnAddr & 0xFFFF;
                 text = `RET`;
-                description = `Return to 0x${returnAddr.toString(16).toUpperCase().padStart(2, '0')}`;
+                description = `Return to ${this._fmtAddr(returnAddr)}`;
                 changes.memRead = sp;
                 break;
             }
 
             // I/O
             case OP.OUT: {
-                const rs = this.memory.peek(pc + 1) & 0x03;
+                const rs = this.memory.peek(pc + 1) & 0x07;
                 const val = this.registers.get(rs);
                 this._output.push(val);
                 text = `OUT R${rs}`;
                 description = `Output R${rs} = ${val}`;
-                this.bus.emit('output', { value: val, source: `R${rs}` });
+                this.bus.emit('output', { value: val, source: `R${rs}`, type: 'int' });
                 this.registers.pc = pc + 2;
                 break;
             }
 
             case OP.OUT_I: {
-                const imm = this.memory.peek(pc + 1);
+                const imm = this.memory.peek32(pc + 1);
                 this._output.push(imm);
                 text = `OUT ${imm}`;
                 description = `Output ${imm}`;
-                this.bus.emit('output', { value: imm, source: 'immediate' });
+                this.bus.emit('output', { value: imm, source: 'immediate', type: 'int' });
+                this.registers.pc = pc + 5;
+                break;
+            }
+
+            // System call
+            case OP.SYSCALL: {
+                const id = this.memory.peek(pc + 1);
+                text = `SYSCALL ${id}`;
+                switch (id) {
+                    case 0x01: {
+                        // Print integer from R0
+                        const val = this.registers.get(0);
+                        this._output.push(val);
+                        description = `Print integer: R0 = ${val}`;
+                        this.bus.emit('output', { value: val, source: 'R0', type: 'int' });
+                        break;
+                    }
+                    case 0x02: {
+                        // Print string from memory at address in R0
+                        const addr = this.registers.get(0) & 0xFFFF;
+                        let str = '';
+                        let i = addr;
+                        while (i < this.memory.size && this.memory.peek(i) !== 0) {
+                            str += String.fromCharCode(this.memory.peek(i));
+                            i++;
+                            if (str.length > 256) break; // Safety limit
+                        }
+                        description = `Print string at ${this._fmtAddr(addr)}: "${str}"`;
+                        this.bus.emit('output', { value: str, source: 'memory', type: 'string' });
+                        break;
+                    }
+                    case 0x03: {
+                        // Print char from R0
+                        const ch = this.registers.get(0) & 0xFF;
+                        description = `Print char: '${String.fromCharCode(ch)}'`;
+                        this.bus.emit('output', { value: String.fromCharCode(ch), source: 'R0', type: 'char' });
+                        break;
+                    }
+                    case 0x04: {
+                        // Print newline
+                        description = `Print newline`;
+                        this.bus.emit('output', { value: '\n', source: 'system', type: 'newline' });
+                        break;
+                    }
+                    default:
+                        description = `Unknown syscall: ${id}`;
+                        this.bus.emit('error', { type: 'syscall', message: `Unknown syscall: ${id}` });
+                }
                 this.registers.pc = pc + 2;
                 break;
             }
@@ -1644,9 +1864,7 @@ class CPU {
             return;
         }
 
-        // Execute based on speed
         if (this._speed >= 100) {
-            // Burst mode: execute multiple steps per frame
             const stepsPerFrame = Math.min(this._speed, 500);
             for (let i = 0; i < stepsPerFrame; i++) {
                 if (!this.step()) {
@@ -1654,7 +1872,6 @@ class CPU {
                     this.bus.emit('cpuStopped', { cycle: this._cycleCount });
                     return;
                 }
-                // Check breakpoints
                 if (this._breakpoints.has(this.registers.pc)) {
                     this._running = false;
                     this.bus.emit('breakpointHit', { pc: this.registers.pc, cycle: this._cycleCount });
@@ -1664,13 +1881,11 @@ class CPU {
             }
             this._animationFrame = requestAnimationFrame(() => this._runLoop());
         } else {
-            // Slow mode: one step, then delay
             if (!this.step()) {
                 this._running = false;
                 this.bus.emit('cpuStopped', { cycle: this._cycleCount });
                 return;
             }
-            // Check breakpoints
             if (this._breakpoints.has(this.registers.pc)) {
                 this._running = false;
                 this.bus.emit('breakpointHit', { pc: this.registers.pc, cycle: this._cycleCount });
@@ -1753,4 +1968,5 @@ window.MiniCPU = {
     STACK_START,
     DATA_START,
     CODE_START,
+    WORD_SIZE,
 };

@@ -1,5 +1,5 @@
 // ============================================================================
-// app.js — MiniCPU Application Layer
+// app.js — MiniCPU 32-bit Application Layer
 // ============================================================================
 // Wires UI ↔ Compiler ↔ CPU ↔ Visualizer
 // ============================================================================
@@ -14,95 +14,150 @@
     const cpu = new MiniCPU.CPU(bus);
     const compiler = new MiniCompiler.Compiler(bus);
 
-    let compiledData = null;      // Last successful compilation result
+    let compiledData = null;
     let isCompiled = false;
 
     // ════════════════════════════════════════════════════════════════════
-    // Example Programs
+    // Example Programs (C style with main/printf)
     // ════════════════════════════════════════════════════════════════════
 
     const EXAMPLES = {
-        'Sum 1..10': `// Sum of 1 to 10
-int sum = 0;
-int i = 1;
-while (i <= 10) {
-    sum = sum + i;
-    i = i + 1;
-}
-print(sum);`,
+        'Hello World': `#include <stdio.h>
 
-        'Countdown': `// Countdown from 10
-int n = 10;
-while (n > 0) {
-    print(n);
-    n = n - 1;
-}
-print(0);`,
-
-        'Multiply': `// Multiply via addition
-int a = 7;
-int b = 6;
-int result = 0;
-int i = 0;
-while (i < b) {
-    result = result + a;
-    i = i + 1;
-}
-print(result);`,
-
-        'If/Else': `// Max of two numbers
-int x = 42;
-int y = 17;
-int max = 0;
-if (x > y) {
-    max = x;
-} else {
-    max = y;
-}
-print(max);`,
-
-        'Fibonacci': `// First 10 Fibonacci numbers
-int a = 0;
-int b = 1;
-int i = 0;
-int temp = 0;
-while (i < 10) {
-    print(a);
-    temp = a + b;
-    a = b;
-    b = temp;
-    i = i + 1;
+int main() {
+    printf("Hello, World!\\n");
+    return 0;
 }`,
 
-        'Squares': `// Print squares 1..8
-int i = 1;
-while (i <= 8) {
-    print(i * i);
-    i = i + 1;
-}`,
+        'Sum 1..10': `#include <stdio.h>
 
-        'Nested If': `// Classify a number
-int x = 50;
-if (x > 100) {
-    print(3);
-} else {
-    if (x > 30) {
-        print(2);
-    } else {
-        print(1);
+int main() {
+    int sum = 0;
+    for (int i = 1; i <= 10; i++) {
+        sum += i;
     }
+    printf("Sum = %d\\n", sum);
+    return 0;
 }`,
 
-        'Power of 2': `// Compute 2^8
-int base = 2;
-int exp = 8;
-int result = 1;
-int i = 0;
-while (i < exp) {
-    result = result * base;
-    i = i + 1;
-}
-print(result);`,
+        'Fibonacci': `#include <stdio.h>
+
+int main() {
+    int a = 0;
+    int b = 1;
+    int temp = 0;
+    for (int i = 0; i < 10; i++) {
+        printf("%d ", a);
+        temp = a + b;
+        a = b;
+        b = temp;
+    }
+    printf("\\n");
+    return 0;
+}`,
+
+        'Factorial': `#include <stdio.h>
+
+int main() {
+    int n = 10;
+    int fact = 1;
+    for (int i = 1; i <= n; i++) {
+        fact *= i;
+    }
+    printf("%d! = %d\\n", n, fact);
+    return 0;
+}`,
+
+        'Max of Two': `#include <stdio.h>
+
+int main() {
+    int x = 42;
+    int y = 17;
+    int max = 0;
+    if (x > y) {
+        max = x;
+    } else {
+        max = y;
+    }
+    printf("max(%d, %d) = %d\\n", x, y, max);
+    return 0;
+}`,
+
+        'Countdown': `#include <stdio.h>
+
+int main() {
+    for (int i = 10; i >= 0; i--) {
+        printf("%d ", i);
+    }
+    printf("\\nLiftoff!\\n");
+    return 0;
+}`,
+
+        'Multiplication': `#include <stdio.h>
+
+int main() {
+    int a = 7;
+    int b = 6;
+    int result = a * b;
+    printf("%d x %d = %d\\n", a, b, result);
+    return 0;
+}`,
+
+        'Division & Mod': `#include <stdio.h>
+
+int main() {
+    int a = 100;
+    int b = 7;
+    int quot = a / b;
+    int rem = a % b;
+    printf("%d / %d = %d remainder %d\\n", a, b, quot, rem);
+    return 0;
+}`,
+
+        'Power of 2': `#include <stdio.h>
+
+int main() {
+    int result = 1;
+    for (int i = 0; i < 16; i++) {
+        printf("2^%d = %d\\n", i, result);
+        result *= 2;
+    }
+    return 0;
+}`,
+
+        'Squares': `#include <stdio.h>
+
+int main() {
+    for (int i = 1; i <= 12; i++) {
+        printf("%d^2 = %d\\n", i, i * i);
+    }
+    return 0;
+}`,
+
+        'Nested Loops': `#include <stdio.h>
+
+int main() {
+    int sum = 0;
+    for (int i = 1; i <= 5; i++) {
+        for (int j = 1; j <= i; j++) {
+            sum += j;
+        }
+    }
+    printf("Sum = %d\\n", sum);
+    return 0;
+}`,
+
+        'Large Numbers': `#include <stdio.h>
+
+int main() {
+    int million = 1000000;
+    int result = million * 42;
+    printf("%d * 42 = %d\\n", million, result);
+    
+    int big = 2147483647;
+    printf("Max int: %d\\n", big);
+    return 0;
+}`,
     };
 
     // ════════════════════════════════════════════════════════════════════
@@ -136,10 +191,10 @@ print(result);`,
     const tracePanel    = $('#trace-output');
 
     // CPU Display
-    const regR0   = $('#reg-r0');
-    const regR1   = $('#reg-r1');
-    const regR2   = $('#reg-r2');
-    const regR3   = $('#reg-r3');
+    const regEls = {};
+    for (let i = 0; i < 8; i++) {
+        regEls[i] = $(`#reg-r${i}`);
+    }
     const regPC   = $('#reg-pc');
     const regSP   = $('#reg-sp');
     const flagZ   = $('#flag-z');
@@ -160,6 +215,13 @@ print(result);`,
     const exampleSelect = $('#example-select');
 
     // ════════════════════════════════════════════════════════════════════
+    // Constants for memory display
+    // ════════════════════════════════════════════════════════════════════
+    const MEM_DISPLAY_ROWS = 32;  // Show first 512 bytes (32 rows × 16 cols)
+    const MEM_DISPLAY_COLS = 16;
+    const MEM_DISPLAY_SIZE = MEM_DISPLAY_ROWS * MEM_DISPLAY_COLS;
+
+    // ════════════════════════════════════════════════════════════════════
     // Initialize
     // ════════════════════════════════════════════════════════════════════
 
@@ -168,9 +230,8 @@ print(result);`,
         buildMemoryGrid();
         attachEventHandlers();
         attachBusListeners();
-        loadExample('Sum 1..10');
+        loadExample('Hello World');
         updateStatusBar('Ready', 'idle');
-        // Auto-compile on load
         setTimeout(() => doCompile(), 200);
     }
 
@@ -193,7 +254,7 @@ print(result);`,
     }
 
     // ════════════════════════════════════════════════════════════════════
-    // Memory Grid
+    // Memory Grid (showing first 512 bytes of 4KB)
     // ════════════════════════════════════════════════════════════════════
 
     const memoryCells = [];
@@ -206,10 +267,10 @@ print(result);`,
         const headerRow = document.createElement('div');
         headerRow.className = 'mem-row mem-header';
         const corner = document.createElement('div');
-        corner.className = 'mem-label';
+        corner.className = 'mem-label mem-corner';
         corner.textContent = '';
         headerRow.appendChild(corner);
-        for (let c = 0; c < 16; c++) {
+        for (let c = 0; c < MEM_DISPLAY_COLS; c++) {
             const h = document.createElement('div');
             h.className = 'mem-label';
             h.textContent = c.toString(16).toUpperCase();
@@ -217,22 +278,22 @@ print(result);`,
         }
         memoryGrid.appendChild(headerRow);
 
-        for (let row = 0; row < 16; row++) {
+        for (let row = 0; row < MEM_DISPLAY_ROWS; row++) {
             const rowDiv = document.createElement('div');
             rowDiv.className = 'mem-row';
 
             const label = document.createElement('div');
             label.className = 'mem-label';
-            label.textContent = (row * 16).toString(16).toUpperCase().padStart(2, '0');
+            label.textContent = (row * MEM_DISPLAY_COLS).toString(16).toUpperCase().padStart(3, '0');
             rowDiv.appendChild(label);
 
-            for (let col = 0; col < 16; col++) {
-                const addr = row * 16 + col;
+            for (let col = 0; col < MEM_DISPLAY_COLS; col++) {
+                const addr = row * MEM_DISPLAY_COLS + col;
                 const cell = document.createElement('div');
                 cell.className = 'mem-cell';
                 cell.dataset.addr = addr;
                 cell.textContent = '00';
-                cell.title = `0x${addr.toString(16).toUpperCase().padStart(2, '0')}: 0`;
+                cell.title = `0x${addr.toString(16).toUpperCase().padStart(3, '0')}: 0`;
 
                 // Color region
                 const region = cpu.memory.getRegion(addr);
@@ -247,12 +308,12 @@ print(result);`,
     }
 
     function updateMemoryGrid() {
-        for (let i = 0; i < MiniCPU.MEMORY_SIZE; i++) {
+        for (let i = 0; i < MEM_DISPLAY_SIZE; i++) {
             const val = cpu.memory.peek(i);
             const cell = memoryCells[i];
             if (!cell) continue;
             cell.textContent = val.toString(16).toUpperCase().padStart(2, '0');
-            cell.title = `0x${i.toString(16).toUpperCase().padStart(2, '0')}: ${val} (0b${val.toString(2).padStart(8, '0')})`;
+            cell.title = `0x${i.toString(16).toUpperCase().padStart(3, '0')}: ${val} (0b${val.toString(2).padStart(8, '0')})`;
         }
     }
 
@@ -264,13 +325,22 @@ print(result);`,
     }
 
     // ════════════════════════════════════════════════════════════════════
-    // Register Display
+    // Register Display (32-bit, 8 registers)
     // ════════════════════════════════════════════════════════════════════
 
+    function fmtReg32(val) {
+        // Display as 8-digit hex for 32-bit
+        return ((val >>> 0)).toString(16).toUpperCase().padStart(8, '0');
+    }
+
+    function fmtAddr(val) {
+        return (val & 0xFFFF).toString(16).toUpperCase().padStart(3, '0');
+    }
+
     function updateRegisters() {
-        const setReg = (el, val) => {
+        const setReg = (el, val, digits = 8) => {
             if (!el) return;
-            const text = val.toString(16).toUpperCase().padStart(2, '0');
+            const text = digits === 8 ? fmtReg32(val) : fmtAddr(val);
             if (el.textContent !== text) {
                 el.textContent = text;
                 el.classList.add('reg-flash');
@@ -278,12 +348,11 @@ print(result);`,
             }
         };
 
-        setReg(regR0, cpu.registers.get(0));
-        setReg(regR1, cpu.registers.get(1));
-        setReg(regR2, cpu.registers.get(2));
-        setReg(regR3, cpu.registers.get(3));
-        setReg(regPC, cpu.registers.pc);
-        setReg(regSP, cpu.registers.sp);
+        for (let i = 0; i < 8; i++) {
+            setReg(regEls[i], cpu.registers.get(i), 8);
+        }
+        setReg(regPC, cpu.registers.pc, 3);
+        setReg(regSP, cpu.registers.sp, 3);
 
         if (cycleCount) cycleCount.textContent = cpu.cycleCount;
     }
@@ -313,7 +382,12 @@ print(result);`,
             if (tok.type === 'EOF') continue;
             const chip = document.createElement('span');
             chip.className = `token-chip token-${tok.type.toLowerCase()}`;
-            chip.textContent = tok.type === 'NUMBER' ? tok.raw : tok.value;
+
+            if (tok.type === 'STRING') {
+                chip.textContent = `"${tok.raw.replace(/^"|"$/g, '')}"`;
+            } else {
+                chip.textContent = tok.type === 'NUMBER' ? tok.raw : tok.value;
+            }
 
             const label = document.createElement('span');
             label.className = 'token-label';
@@ -335,7 +409,6 @@ print(result);`,
     function renderAST(ast) {
         if (!astPanel) return;
         astPanel.innerHTML = '';
-
         const tree = buildASTTree(ast, 0);
         astPanel.appendChild(tree);
     }
@@ -353,14 +426,21 @@ print(result);`,
             case 'Program':
                 header.textContent = '📦 Program';
                 break;
+            case 'FunctionDecl':
+                header.textContent = `🔧 ${node.returnType} ${node.name}()`;
+                break;
             case 'VarDecl':
                 header.textContent = `📌 int ${node.name}`;
-                if (node.initializer) {
-                    header.textContent += ' = ...';
-                }
+                if (node.initializer) header.textContent += ' = ...';
                 break;
             case 'Assignment':
                 header.textContent = `✏️ ${node.name} = ...`;
+                break;
+            case 'CompoundAssign':
+                header.textContent = `✏️ ${node.name} ${node.operator} ...`;
+                break;
+            case 'IncDec':
+                header.textContent = `✏️ ${node.name}${node.operator}`;
                 break;
             case 'IfStatement':
                 header.textContent = '🔀 if (...)';
@@ -368,20 +448,33 @@ print(result);`,
             case 'WhileStatement':
                 header.textContent = '🔁 while (...)';
                 break;
+            case 'ForStatement':
+                header.textContent = '🔁 for (...)';
+                break;
             case 'Block':
                 header.textContent = '{ ... }';
                 break;
-            case 'PrintStatement':
-                header.textContent = '🖨️ print(...)';
+            case 'PrintfStatement':
+                header.textContent = '🖨️ printf(...)';
+                break;
+            case 'ReturnStatement':
+                header.textContent = '↩️ return';
+                if (node.value) header.textContent += ' ...';
                 break;
             case 'BinaryExpression':
                 header.textContent = `⚙️ ${node.operator}`;
+                break;
+            case 'LogicalExpression':
+                header.textContent = `🔗 ${node.operator}`;
                 break;
             case 'UnaryExpression':
                 header.textContent = `⚙️ ${node.operator}(unary)`;
                 break;
             case 'NumberLiteral':
                 header.textContent = `🔢 ${node.value}`;
+                break;
+            case 'StringLiteral':
+                header.textContent = `📝 "${node.value.substring(0, 20)}${node.value.length > 20 ? '...' : ''}"`;
                 break;
             case 'Identifier':
                 header.textContent = `📎 ${node.name}`;
@@ -406,15 +499,22 @@ print(result);`,
     function getASTNodeClass(type) {
         const map = {
             'Program': 'program',
+            'FunctionDecl': 'function',
             'VarDecl': 'data',
             'Assignment': 'data',
+            'CompoundAssign': 'data',
+            'IncDec': 'data',
             'IfStatement': 'control',
             'WhileStatement': 'control',
+            'ForStatement': 'control',
             'Block': 'block',
-            'PrintStatement': 'io',
+            'PrintfStatement': 'io',
+            'ReturnStatement': 'control',
             'BinaryExpression': 'expr',
+            'LogicalExpression': 'expr',
             'UnaryExpression': 'expr',
             'NumberLiteral': 'literal',
+            'StringLiteral': 'literal',
             'Identifier': 'ident',
         };
         return map[type] || 'default';
@@ -426,10 +526,16 @@ print(result);`,
             case 'Program':
             case 'Block':
                 return node.body || [];
+            case 'FunctionDecl':
+                children.push(node.body);
+                return children;
             case 'VarDecl':
                 if (node.initializer) children.push(node.initializer);
                 return children;
             case 'Assignment':
+                children.push(node.value);
+                return children;
+            case 'CompoundAssign':
                 children.push(node.value);
                 return children;
             case 'IfStatement':
@@ -441,10 +547,22 @@ print(result);`,
                 children.push(node.condition);
                 children.push(node.body);
                 return children;
-            case 'PrintStatement':
-                children.push(node.value);
+            case 'ForStatement':
+                if (node.init) children.push(node.init);
+                if (node.condition) children.push(node.condition);
+                if (node.update) children.push(node.update);
+                children.push(node.body);
+                return children;
+            case 'PrintfStatement':
+                for (const arg of (node.args || [])) {
+                    children.push(arg);
+                }
+                return children;
+            case 'ReturnStatement':
+                if (node.value) children.push(node.value);
                 return children;
             case 'BinaryExpression':
+            case 'LogicalExpression':
                 children.push(node.left);
                 children.push(node.right);
                 return children;
@@ -464,7 +582,6 @@ print(result);`,
         if (!asmPanel) return;
         asmPanel.innerHTML = '';
 
-        // Show labels at their addresses
         const labelsByAddr = {};
         if (labels) {
             for (const [name, addr] of Object.entries(labels)) {
@@ -473,7 +590,6 @@ print(result);`,
         }
 
         for (const entry of listing) {
-            // Check for label at this address
             if (labelsByAddr[entry.address]) {
                 const labelDiv = document.createElement('div');
                 labelDiv.className = 'asm-label';
@@ -487,7 +603,7 @@ print(result);`,
 
             const addrSpan = document.createElement('span');
             addrSpan.className = 'asm-addr';
-            addrSpan.textContent = `0x${entry.address.toString(16).toUpperCase().padStart(2, '0')}`;
+            addrSpan.textContent = `0x${entry.address.toString(16).toUpperCase().padStart(3, '0')}`;
 
             const hexSpan = document.createElement('span');
             hexSpan.className = 'asm-hex';
@@ -520,14 +636,13 @@ print(result);`,
             const cell = document.createElement('span');
             cell.className = 'bytecode-byte';
             cell.textContent = bytes[i].toString(16).toUpperCase().padStart(2, '0');
-            cell.title = `Offset 0x${i.toString(16).toUpperCase().padStart(2, '0')}: ${bytes[i]} (0b${bytes[i].toString(2).padStart(8, '0')})`;
+            cell.title = `Offset 0x${i.toString(16).toUpperCase().padStart(3, '0')}: ${bytes[i]} (0b${bytes[i].toString(2).padStart(8, '0')})`;
             cell.dataset.offset = i;
             grid.appendChild(cell);
         }
 
         bytecodePanel.appendChild(grid);
 
-        // Summary
         const summary = document.createElement('div');
         summary.className = 'bytecode-summary';
         summary.textContent = `${bytes.length} bytes`;
@@ -535,8 +650,10 @@ print(result);`,
     }
 
     // ════════════════════════════════════════════════════════════════════
-    // Console Output
+    // Console Output (supports printf-style streaming)
     // ════════════════════════════════════════════════════════════════════
+
+    let consoleBuffer = '';
 
     function appendConsole(text, type = 'output') {
         if (!consolePanel) return;
@@ -547,8 +664,32 @@ print(result);`,
         consolePanel.scrollTop = consolePanel.scrollHeight;
     }
 
+    function appendConsoleInline(text) {
+        if (!consolePanel) return;
+        // Find or create current output line
+        let currentLine = consolePanel.querySelector('.console-line.console-current');
+        if (!currentLine) {
+            currentLine = document.createElement('div');
+            currentLine.className = 'console-line console-output console-current';
+            consolePanel.appendChild(currentLine);
+        }
+        consoleBuffer += text;
+        currentLine.textContent = consoleBuffer;
+        consolePanel.scrollTop = consolePanel.scrollHeight;
+    }
+
+    function flushConsoleLine() {
+        if (!consolePanel) return;
+        const currentLine = consolePanel.querySelector('.console-line.console-current');
+        if (currentLine) {
+            currentLine.classList.remove('console-current');
+        }
+        consoleBuffer = '';
+    }
+
     function clearConsole() {
         if (consolePanel) consolePanel.innerHTML = '';
+        consoleBuffer = '';
     }
 
     // ════════════════════════════════════════════════════════════════════
@@ -560,7 +701,7 @@ print(result);`,
         tracePanel.innerHTML = '';
 
         const trace = cpu.trace;
-        const startIdx = Math.max(0, trace.length - 50); // Show last 50
+        const startIdx = Math.max(0, trace.length - 50);
 
         for (let i = startIdx; i < trace.length; i++) {
             const entry = trace[i];
@@ -573,7 +714,7 @@ print(result);`,
 
             const pcSpan = document.createElement('span');
             pcSpan.className = 'trace-pc';
-            pcSpan.textContent = `0x${entry.pc.toString(16).toUpperCase().padStart(2, '0')}`;
+            pcSpan.textContent = `0x${entry.pc.toString(16).toUpperCase().padStart(3, '0')}`;
 
             const textSpan = document.createElement('span');
             textSpan.className = 'trace-text';
@@ -599,25 +740,23 @@ print(result);`,
     // ════════════════════════════════════════════════════════════════════
 
     function highlightCurrentInstruction() {
-        // Clear old highlights
         $$('.asm-line.asm-current').forEach(el => el.classList.remove('asm-current'));
-        memoryCells.forEach(c => {
+        for (let i = 0; i < MEM_DISPLAY_SIZE; i++) {
+            const c = memoryCells[i];
             if (c) c.classList.remove('mem-pc');
-        });
+        }
 
         if (!isCompiled || cpu.halted) return;
 
         const pc = cpu.registers.pc;
 
-        // Highlight in assembly listing
         const asmLine = $(`.asm-line[data-address="${pc}"]`);
         if (asmLine) {
             asmLine.classList.add('asm-current');
             asmLine.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
 
-        // Highlight in memory
-        if (memoryCells[pc]) {
+        if (pc < MEM_DISPLAY_SIZE && memoryCells[pc]) {
             memoryCells[pc].classList.add('mem-pc');
         }
     }
@@ -643,6 +782,15 @@ print(result);`,
             // Load into CPU
             cpu.loadProgram(result.bytecode);
 
+            // Also load string data into memory
+            if (result.strings && result.strings.length > 0) {
+                for (const strData of result.strings) {
+                    for (let i = 0; i < strData.bytes.length; i++) {
+                        cpu.memory.poke(strData.addr + i, strData.bytes[i]);
+                    }
+                }
+            }
+
             // Render all panels
             renderTokens(result.tokens);
             renderAST(result.ast);
@@ -655,11 +803,10 @@ print(result);`,
 
             appendConsole(`✓ Compiled: ${result.bytecode.length} bytes, ${result.listing.length} instructions`, 'info');
 
-            // Show variable mapping
             if (result.symbols && result.symbols.size > 0) {
                 let varInfo = 'Variables: ';
                 for (const [name, addr] of result.symbols) {
-                    varInfo += `${name}@0x${addr.toString(16).toUpperCase().padStart(2, '0')} `;
+                    varInfo += `${name}@0x${addr.toString(16).toUpperCase().padStart(3, '0')} `;
                 }
                 appendConsole(varInfo, 'info');
             }
@@ -693,6 +840,7 @@ print(result);`,
         highlightCurrentInstruction();
 
         if (cpu.halted) {
+            flushConsoleLine();
             updateStatusBar('Halted', 'halted');
             appendConsole(`Program halted after ${cpu.cycleCount} cycles.`, 'info');
         } else {
@@ -730,6 +878,7 @@ print(result);`,
 
         updateStatusBar('Running (fast)...', 'running');
         cpu.runToEnd();
+        flushConsoleLine();
         updateRegisters();
         updateFlags();
         updateMemoryGrid();
@@ -754,6 +903,14 @@ print(result);`,
 
         if (compiledData) {
             cpu.loadProgram(compiledData.bytecode);
+            // Reload string data
+            if (compiledData.strings && compiledData.strings.length > 0) {
+                for (const strData of compiledData.strings) {
+                    for (let i = 0; i < strData.bytes.length; i++) {
+                        cpu.memory.poke(strData.addr + i, strData.bytes[i]);
+                    }
+                }
+            }
             updateMemoryGrid();
         } else {
             cpu.reset();
@@ -775,7 +932,6 @@ print(result);`,
     function getSpeedValue() {
         if (!speedSlider) return 5;
         const val = parseInt(speedSlider.value);
-        // Exponential scale: 1=1Hz, 50=10Hz, 100=1000Hz
         if (val <= 50) {
             return Math.round(1 + (val / 50) * 9);
         } else {
@@ -849,7 +1005,6 @@ print(result);`,
 
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
-            // Don't capture when typing in editor
             if (document.activeElement === editorArea && !e.ctrlKey && !e.metaKey) return;
 
             if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
@@ -864,8 +1019,6 @@ print(result);`,
             } else if (e.key === 'Escape') {
                 e.preventDefault();
                 doPause();
-            } else if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
-                // Don't capture browser refresh
             }
         });
 
@@ -888,13 +1041,25 @@ print(result);`,
     // ════════════════════════════════════════════════════════════════════
 
     function attachBusListeners() {
-        // CPU output
+        // CPU output (printf syscalls)
         bus.on('output', (data) => {
-            appendConsole(`→ ${data.value}`, 'output');
+            if (data.type === 'int') {
+                appendConsoleInline(String(data.value));
+            } else if (data.type === 'string') {
+                appendConsoleInline(data.value);
+            } else if (data.type === 'char') {
+                appendConsoleInline(data.value);
+            } else if (data.type === 'newline') {
+                flushConsoleLine();
+            } else {
+                // Fallback for legacy OUT instruction
+                appendConsole(`→ ${data.value}`, 'output');
+            }
         });
 
         // CPU halted
         bus.on('cpuHalted', () => {
+            flushConsoleLine();
             setButtonStates(false);
             updateStatusBar(`Halted (${cpu.cycleCount} cycles)`, 'halted');
         });
@@ -911,17 +1076,21 @@ print(result);`,
 
         // Memory write flash
         bus.on('memoryWrite', (data) => {
-            flashMemoryCell(data.address, 'mem-write-flash');
-            // Update the cell immediately
-            const cell = memoryCells[data.address];
-            if (cell) {
-                cell.textContent = data.value.toString(16).toUpperCase().padStart(2, '0');
+            if (data.address < MEM_DISPLAY_SIZE) {
+                flashMemoryCell(data.address, 'mem-write-flash');
+                const cell = memoryCells[data.address];
+                if (cell) {
+                    const val = data.width === 32 ? (data.value & 0xFF) : data.value;
+                    cell.textContent = (val & 0xFF).toString(16).toUpperCase().padStart(2, '0');
+                }
             }
         });
 
         // Memory read flash
         bus.on('memoryRead', (data) => {
-            flashMemoryCell(data.address, 'mem-read-flash');
+            if (data.address < MEM_DISPLAY_SIZE) {
+                flashMemoryCell(data.address, 'mem-read-flash');
+            }
         });
 
         // Instruction executed (for slow mode updates)
@@ -931,7 +1100,6 @@ print(result);`,
                 updateFlags();
                 updateTrace();
                 highlightCurrentInstruction();
-                // Update specific memory cells instead of full grid
             }
         });
 

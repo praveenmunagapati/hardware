@@ -581,18 +581,36 @@ select:focus { border-color: var(--accent-amber); }
 
 /* Token colors */
 .token-number     { background: rgba(240, 168, 48, 0.12); color: var(--accent-amber); border-color: rgba(240, 168, 48, 0.25); }
+.token-string     { background: rgba(50, 216, 104, 0.12); color: var(--accent-green); border-color: rgba(50, 216, 104, 0.25); }
 .token-identifier { background: rgba(56, 200, 208, 0.10); color: var(--accent-cyan); border-color: rgba(56, 200, 208, 0.25); }
-.token-int, .token-if, .token-else, .token-while, .token-print {
+.token-int, .token-void, .token-char,
+.token-if, .token-else, .token-while, .token-for,
+.token-return, .token-printf {
     background: rgba(200, 80, 192, 0.12); color: var(--accent-magenta); border-color: rgba(200, 80, 192, 0.25);
 }
-.token-plus, .token-minus, .token-star {
+.token-plus, .token-minus, .token-star, .token-slash, .token-percent {
     background: rgba(50, 216, 104, 0.10); color: var(--accent-green); border-color: rgba(50, 216, 104, 0.25);
+}
+.token-plus_plus, .token-minus_minus,
+.token-plus_eq, .token-minus_eq, .token-star_eq, .token-slash_eq, .token-percent_eq {
+    background: rgba(50, 216, 104, 0.10); color: var(--accent-green); border-color: rgba(50, 216, 104, 0.25);
+}
+.token-and_and, .token-or_or, .token-bang {
+    background: rgba(240, 168, 48, 0.10); color: var(--accent-amber); border-color: rgba(240, 168, 48, 0.20);
 }
 .token-assign, .token-eq, .token-neq, .token-lt, .token-gt, .token-lte, .token-gte {
     background: rgba(68, 136, 255, 0.10); color: var(--accent-blue); border-color: rgba(68, 136, 255, 0.25);
 }
-.token-lparen, .token-rparen, .token-lbrace, .token-rbrace, .token-semicolon, .token-comma {
+.token-lparen, .token-rparen, .token-lbrace, .token-rbrace,
+.token-lbracket, .token-rbracket,
+.token-semicolon, .token-comma {
     background: rgba(136, 102, 221, 0.10); color: var(--accent-purple); border-color: rgba(136, 102, 221, 0.20);
+}
+.token-hash {
+    background: rgba(240, 80, 80, 0.10); color: var(--accent-red); border-color: rgba(240, 80, 80, 0.20);
+}
+.token-amp, .token-pipe, .token-caret, .token-tilde {
+    background: rgba(68, 136, 255, 0.08); color: var(--accent-blue); border-color: rgba(68, 136, 255, 0.18);
 }
 
 
@@ -622,6 +640,7 @@ select:focus { border-color: var(--accent-amber); }
 }
 
 .ast-program  { color: var(--text-secondary); }
+.ast-function { color: var(--accent-blue);    background: rgba(68, 136, 255, 0.08); }
 .ast-data     { color: var(--accent-cyan);    background: rgba(56, 200, 208, 0.08); }
 .ast-control  { color: var(--accent-magenta); background: rgba(200, 80, 192, 0.08); }
 .ast-io       { color: var(--accent-green);   background: rgba(50, 216, 104, 0.08); }
@@ -781,16 +800,21 @@ select:focus { border-color: var(--accent-amber); }
 
 .reg-value {
     font-family: var(--font-mono);
-    font-size: 22px;
+    font-size: 15px;
     font-weight: 700;
     color: var(--accent-cyan);
     background: rgba(56, 200, 208, 0.05);
     border: 1px solid rgba(56, 200, 208, 0.15);
     border-radius: var(--radius-md);
-    padding: 6px 16px;
-    min-width: 56px;
+    padding: 5px 10px;
+    min-width: 90px;
     text-align: center;
     transition: all var(--transition-med);
+    letter-spacing: 0.5px;
+}
+
+.register-group + .register-group {
+    margin-top: var(--space-sm);
 }
 
 .reg-value.reg-flash {
@@ -903,6 +927,12 @@ select:focus { border-color: var(--accent-amber); }
 
 .memory-grid-container {
     overflow-x: auto;
+    overflow-y: auto;
+    max-height: 500px;
+}
+
+.mem-corner {
+    width: 36px;
 }
 
 .mem-row {

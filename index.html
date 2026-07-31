@@ -3,8 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="MiniCPU — Interactive Computer Architecture Learning Platform. Visualize compilation, assembly, and CPU execution step by step.">
-    <title>MiniCPU — Computer Architecture Visualizer</title>
+    <meta name="description" content="MiniCPU 32-bit — Interactive Computer Architecture Learning Platform. Write real C code and visualize compilation, assembly, and 32-bit CPU execution step by step.">
+    <title>MiniCPU 32-bit — Computer Architecture Visualizer</title>
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -19,7 +19,7 @@
             <div class="brand">
                 <div class="brand-icon">μ</div>
                 <div>
-                    <div class="brand-name">MiniCPU</div>
+                    <div class="brand-name">MiniCPU <span class="brand-arch">32-bit</span></div>
                     <div class="brand-tag">Architecture Lab</div>
                 </div>
             </div>
@@ -70,7 +70,7 @@
                     <div class="stage-number">01</div>
                     <div class="stage-info">
                         <h2 class="stage-title">Source Code</h2>
-                        <p class="stage-desc">Write your program in a minimal C-like language. Supports variables, arithmetic, conditionals, loops, and print.</p>
+                        <p class="stage-desc">Write your program in C. Supports <code>main()</code>, <code>printf()</code>, <code>for</code>/<code>while</code> loops, <code>if</code>/<code>else</code>, <code>return</code>, and arithmetic.</p>
                     </div>
                     <div class="stage-dot dot-amber"></div>
                 </div>
@@ -78,8 +78,8 @@
                     <textarea id="source-editor"
                               spellcheck="false"
                               autocomplete="off"
-                              placeholder="Write code here..."
-                              rows="14"></textarea>
+                              placeholder="Write C code here..."
+                              rows="16"></textarea>
                 </div>
             </section>
 
@@ -95,7 +95,7 @@
                     <div class="stage-number">02</div>
                     <div class="stage-info">
                         <h2 class="stage-title">Tokens</h2>
-                        <p class="stage-desc">The lexer scans characters and groups them into meaningful tokens — keywords, identifiers, operators, numbers, and delimiters.</p>
+                        <p class="stage-desc">The lexer scans characters and groups them into meaningful tokens — keywords, identifiers, operators, strings, numbers, and delimiters.</p>
                     </div>
                     <div class="stage-dot dot-magenta"></div>
                 </div>
@@ -116,7 +116,7 @@
                     <div class="stage-number">03</div>
                     <div class="stage-info">
                         <h2 class="stage-title">Abstract Syntax Tree</h2>
-                        <p class="stage-desc">The parser builds a hierarchical tree from the flat token stream, capturing the program's structure and meaning.</p>
+                        <p class="stage-desc">The parser builds a hierarchical tree capturing the program's structure — functions, statements, expressions, and control flow.</p>
                     </div>
                     <div class="stage-dot dot-cyan"></div>
                 </div>
@@ -137,7 +137,7 @@
                     <div class="stage-number">04</div>
                     <div class="stage-info">
                         <h2 class="stage-title">Machine Code</h2>
-                        <p class="stage-desc">The assembler resolves labels and encodes each instruction into raw bytes — the only thing the CPU understands.</p>
+                        <p class="stage-desc">The assembler resolves labels and encodes each instruction into raw bytes — the only thing the 32-bit CPU understands.</p>
                     </div>
                     <div class="stage-dot dot-purple"></div>
                 </div>
@@ -158,15 +158,15 @@
                     <div class="stage-number">05</div>
                     <div class="stage-info">
                         <h2 class="stage-title">Memory</h2>
-                        <p class="stage-desc">256 bytes of addressable memory. Code lives at the top, variables in the data segment, and the stack grows downward from 0xFF.</p>
+                        <p class="stage-desc">4 KB of byte-addressable memory. Code lives at 0x000, data segment at 0x800, and the stack grows downward from 0xFFC. 32-bit words stored little-endian.</p>
                     </div>
                     <div class="stage-dot dot-purple"></div>
                 </div>
                 <div class="stage-body">
                     <div class="memory-legend">
-                        <span class="legend-item"><span class="legend-swatch legend-code"></span> Code (0x00–0xBF)</span>
-                        <span class="legend-item"><span class="legend-swatch legend-data"></span> Data (0xC0–0xEF)</span>
-                        <span class="legend-item"><span class="legend-swatch legend-stack"></span> Stack (0xF0–0xFF)</span>
+                        <span class="legend-item"><span class="legend-swatch legend-code"></span> Code (0x000–0x7FF)</span>
+                        <span class="legend-item"><span class="legend-swatch legend-data"></span> Data (0x800–0xFBF)</span>
+                        <span class="legend-item"><span class="legend-swatch legend-stack"></span> Stack (0xFC0–0xFFF)</span>
                     </div>
                     <div id="memory-grid" class="memory-grid-container"></div>
                 </div>
@@ -174,7 +174,7 @@
 
             <div class="pipeline-connector connector-execution">
                 <div class="connector-line"></div>
-                <div class="connector-label">CPU Step & Execution</div>
+                <div class="connector-label">CPU Fetch & Execute</div>
                 <div class="connector-arrow">▼</div>
             </div>
 
@@ -186,7 +186,7 @@
                         <div class="stage-number">06</div>
                         <div class="stage-info">
                             <h2 class="stage-title">Assembly</h2>
-                            <p class="stage-desc">The code generator emits low-level assembly instructions — tracked step-by-step with Program Counter.</p>
+                            <p class="stage-desc">32-bit assembly instructions — tracked step-by-step with the Program Counter highlighting the current instruction.</p>
                         </div>
                         <div class="stage-dot dot-green"></div>
                     </div>
@@ -201,7 +201,7 @@
                         <div class="stage-number">07</div>
                         <div class="stage-info">
                             <h2 class="stage-title">CPU State</h2>
-                            <p class="stage-desc">The processor's registers, flags, and program counter. Watch values change as each instruction executes.</p>
+                            <p class="stage-desc">The 32-bit processor's 8 general-purpose registers, flags, and program counter.</p>
                         </div>
                         <div class="stage-dot dot-blue"></div>
                     </div>
@@ -209,23 +209,41 @@
                         <div class="cpu-layout">
                             <!-- General Registers -->
                             <div class="cpu-section">
-                                <div class="cpu-section-title">General Purpose Registers</div>
+                                <div class="cpu-section-title">General Purpose Registers (32-bit)</div>
                                 <div class="register-group">
                                     <div class="register">
                                         <span class="reg-name">R0</span>
-                                        <span class="reg-value" id="reg-r0">00</span>
+                                        <span class="reg-value" id="reg-r0">00000000</span>
                                     </div>
                                     <div class="register">
                                         <span class="reg-name">R1</span>
-                                        <span class="reg-value" id="reg-r1">00</span>
+                                        <span class="reg-value" id="reg-r1">00000000</span>
                                     </div>
                                     <div class="register">
                                         <span class="reg-name">R2</span>
-                                        <span class="reg-value" id="reg-r2">00</span>
+                                        <span class="reg-value" id="reg-r2">00000000</span>
                                     </div>
                                     <div class="register">
                                         <span class="reg-name">R3</span>
-                                        <span class="reg-value" id="reg-r3">00</span>
+                                        <span class="reg-value" id="reg-r3">00000000</span>
+                                    </div>
+                                </div>
+                                <div class="register-group">
+                                    <div class="register">
+                                        <span class="reg-name">R4</span>
+                                        <span class="reg-value" id="reg-r4">00000000</span>
+                                    </div>
+                                    <div class="register">
+                                        <span class="reg-name">R5</span>
+                                        <span class="reg-value" id="reg-r5">00000000</span>
+                                    </div>
+                                    <div class="register">
+                                        <span class="reg-name">R6</span>
+                                        <span class="reg-value" id="reg-r6">00000000</span>
+                                    </div>
+                                    <div class="register">
+                                        <span class="reg-name">R7</span>
+                                        <span class="reg-value" id="reg-r7">00000000</span>
                                     </div>
                                 </div>
                             </div>
@@ -236,11 +254,11 @@
                                 <div class="register-group">
                                     <div class="register reg-pc">
                                         <span class="reg-name">PC</span>
-                                        <span class="reg-value" id="reg-pc">00</span>
+                                        <span class="reg-value" id="reg-pc">000</span>
                                     </div>
                                     <div class="register reg-sp">
                                         <span class="reg-name">SP</span>
-                                        <span class="reg-value" id="reg-sp">FF</span>
+                                        <span class="reg-value" id="reg-sp">FFC</span>
                                     </div>
                                 </div>
                             </div>
@@ -295,7 +313,7 @@
                     <div class="stage-number">08</div>
                     <div class="stage-info">
                         <h2 class="stage-title">Console Output</h2>
-                        <p class="stage-desc">Program output from <code>print()</code> statements and system messages. The final result of your computation.</p>
+                        <p class="stage-desc">Program output from <code>printf()</code> calls and system messages. Just like running your program in a terminal.</p>
                     </div>
                     <div class="stage-dot dot-green"></div>
                 </div>
@@ -332,6 +350,7 @@
         <footer class="status-bar" id="status-bar">
             <div class="status-led led-idle" id="status-led"></div>
             <span class="status-text" id="status-text">Ready</span>
+            <span class="status-arch">32-bit · 8 Registers · 4 KB Memory</span>
             <div class="status-shortcuts">
                 <span><kbd>Ctrl+Enter</kbd> Compile</span>
                 <span><kbd>F5</kbd> Run</span>
