@@ -75,11 +75,14 @@
                     <div class="stage-dot dot-amber"></div>
                 </div>
                 <div class="stage-body">
-                    <textarea id="source-editor"
-                              spellcheck="false"
-                              autocomplete="off"
-                              placeholder="Write C code here..."
-                              rows="16"></textarea>
+                    <div class="editor-container">
+                        <pre id="editor-highlight" aria-hidden="true"><code id="highlighting-content"></code></pre>
+                        <textarea id="source-editor"
+                                  spellcheck="false"
+                                  autocomplete="off"
+                                  placeholder="Write C code here..."
+                                  rows="16"></textarea>
+                    </div>
                 </div>
             </section>
 

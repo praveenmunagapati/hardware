@@ -167,8 +167,10 @@ int main() {
     const $ = (sel) => document.querySelector(sel);
     const $$ = (sel) => document.querySelectorAll(sel);
 
-    // Editor
-    const editorArea = $('#source-editor');
+    // Editor & Highlighting
+    const editorArea         = $('#source-editor');
+    const editorHighlight    = $('#editor-highlight');
+    const highlightingContent= $('#highlighting-content');
 
     // Buttons
     const btnCompile = $('#btn-compile');
@@ -250,7 +252,89 @@ int main() {
         if (EXAMPLES[name] && editorArea) {
             editorArea.value = EXAMPLES[name];
             if (exampleSelect) exampleSelect.value = name;
+            updateSyntaxHighlighting();
         }
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    // Syntax Highlighting
+    // ════════════════════════════════════════════════════════════════════
+
+    function highlightCSyntax(code) {
+        if (!code) return '';
+
+        const esc = (str) => str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+        // Token pattern matching C syntax elements
+        const tokenRegex = /(\/\/[^\n]*|\/\*[\s\S]*?\*\/)|(^#\s*\w+[^\n]*)|("(?:\\.|[^"\\])*")|('(?:\\.|[^'\\])*')|\b(0x[0-9a-fA-F]+|\d+)\b|\b(int|void|char|if|else|while|for|return|printf)\b|([a-zA-Z_]\w*)(?=\s*\()|([a-zA-Z_]\w*)|([{}()\[\];,])|([+\-*\/%=&|^~!<>]|&&|\|\||==|!=|<=|>=|\+=|-=|\*=|\/=|\%=|\+\+|--)/gm;
+
+        let result = '';
+        let lastIndex = 0;
+        let match;
+
+        while ((match = tokenRegex.exec(code)) !== null) {
+            if (match.index > lastIndex) {
+                result += esc(code.slice(lastIndex, match.index));
+            }
+
+            const [
+                full,
+                comment,
+                preproc,
+                strLit,
+                charLit,
+                num,
+                keyword,
+                funcName,
+                ident,
+                punct,
+                op
+            ] = match;
+
+            if (comment) {
+                result += `<span class="hl-comment">${esc(comment)}</span>`;
+            } else if (preproc) {
+                result += `<span class="hl-preproc">${esc(preproc)}</span>`;
+            } else if (strLit || charLit) {
+                result += `<span class="hl-string">${esc(strLit || charLit)}</span>`;
+            } else if (num) {
+                result += `<span class="hl-number">${esc(num)}</span>`;
+            } else if (keyword) {
+                result += `<span class="hl-keyword">${esc(keyword)}</span>`;
+            } else if (funcName) {
+                result += `<span class="hl-func">${esc(funcName)}</span>`;
+            } else if (ident) {
+                result += `<span class="hl-ident">${esc(ident)}</span>`;
+            } else if (punct || op) {
+                result += `<span class="hl-punct">${esc(punct || op)}</span>`;
+            } else {
+                result += esc(full);
+            }
+
+            lastIndex = tokenRegex.lastIndex;
+        }
+
+        if (lastIndex < code.length) {
+            result += esc(code.slice(lastIndex));
+        }
+
+        if (code.endsWith('\n')) {
+            result += '\n';
+        }
+
+        return result;
+    }
+
+    function updateSyntaxHighlighting() {
+        if (!editorArea || !highlightingContent) return;
+        highlightingContent.innerHTML = highlightCSyntax(editorArea.value);
+        syncEditorScroll();
+    }
+
+    function syncEditorScroll() {
+        if (!editorArea || !editorHighlight) return;
+        editorHighlight.scrollTop = editorArea.scrollTop;
+        editorHighlight.scrollLeft = editorArea.scrollLeft;
     }
 
     // ════════════════════════════════════════════════════════════════════
@@ -1022,8 +1106,11 @@ int main() {
             }
         });
 
-        // Tab support in editor
+        // Syntax Highlighting & Editor Input Events
         if (editorArea) {
+            editorArea.addEventListener('input', updateSyntaxHighlighting);
+            editorArea.addEventListener('scroll', syncEditorScroll);
+
             editorArea.addEventListener('keydown', (e) => {
                 if (e.key === 'Tab') {
                     e.preventDefault();
@@ -1031,6 +1118,7 @@ int main() {
                     const end = editorArea.selectionEnd;
                     editorArea.value = editorArea.value.substring(0, start) + '    ' + editorArea.value.substring(end);
                     editorArea.selectionStart = editorArea.selectionEnd = start + 4;
+                    updateSyntaxHighlighting();
                 }
             });
         }
