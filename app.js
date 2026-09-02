@@ -168,6 +168,21 @@ int main() {
     printf("Max int: %d\\n", big);
     return 0;
 }`,
+
+        'Macros & Constants': `#include <stdio.h>
+#define MAX_ITEMS 5
+#define MULTIPLIER 10
+
+int main() {
+    int total = 0;
+    for (int i = 1; i <= MAX_ITEMS; i++) {
+        int scaled = i * MULTIPLIER;
+        total += scaled;
+        printf("Item %d: value = %d\\n", i, scaled);
+    }
+    printf("Total sum = %d\\n", total);
+    return 0;
+}`,
     };
 
     // ════════════════════════════════════════════════════════════════════
@@ -839,6 +854,22 @@ int main() {
             const lineDiv = document.createElement('div');
             lineDiv.className = 'asm-line';
             lineDiv.dataset.address = entry.address;
+            if (cpu.breakpoints.has(entry.address)) {
+                lineDiv.classList.add('has-breakpoint');
+            }
+
+            // Breakpoint gutter marker
+            const bpSpan = document.createElement('span');
+            bpSpan.className = 'asm-bp';
+            bpSpan.title = 'Click to toggle breakpoint';
+            bpSpan.addEventListener('click', (e) => {
+                e.stopPropagation();
+                cpu.toggleBreakpoint(entry.address);
+                lineDiv.classList.toggle('has-breakpoint', cpu.breakpoints.has(entry.address));
+                const isSet = cpu.breakpoints.has(entry.address);
+                const addrHex = `0x${entry.address.toString(16).toUpperCase().padStart(3, '0')}`;
+                updateStatusBar(isSet ? `Breakpoint set at ${addrHex}` : `Breakpoint removed from ${addrHex}`, isSet ? 'ready' : 'idle');
+            });
 
             const addrSpan = document.createElement('span');
             addrSpan.className = 'asm-addr';
@@ -852,6 +883,7 @@ int main() {
             textSpan.className = 'asm-text';
             textSpan.textContent = entry.text;
 
+            lineDiv.appendChild(bpSpan);
             lineDiv.appendChild(addrSpan);
             lineDiv.appendChild(hexSpan);
             lineDiv.appendChild(textSpan);
@@ -1576,6 +1608,20 @@ int main() {
             updateMemoryGrid();
             updateTrace();
             highlightCurrentInstruction();
+        });
+
+        // Breakpoint hit
+        bus.on('breakpointHit', (data) => {
+            doPause();
+            const addrHex = `0x${data.pc.toString(16).toUpperCase().padStart(3, '0')}`;
+            updateStatusBar(`⏸ Breakpoint hit at ${addrHex}`, 'paused');
+            appendConsole(`[DEBUG] Breakpoint reached at ${addrHex} (cycle #${data.cycle})`, 'system');
+            highlightCurrentInstruction();
+            const hitLine = $(`.asm-line[data-address="${data.pc}"]`);
+            if (hitLine) {
+                hitLine.classList.add('breakpoint-hit');
+                setTimeout(() => hitLine.classList.remove('breakpoint-hit'), 1500);
+            }
         });
 
         // Memory write flash

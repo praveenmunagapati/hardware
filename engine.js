@@ -1684,11 +1684,17 @@ class CPU {
                 break;
             }
 
-            // Stack (32-bit push/pop)
+            // Stack (32-bit push/pop with overflow/underflow protection)
             case OP.PUSH: {
                 const rs = this.memory.peek(pc + 1) & 0x07;
                 const val = this.registers.get(rs);
                 const sp = this.registers.sp - WORD_SIZE;
+                if (sp < (STACK_START - 63)) {
+                    this._error = true;
+                    this._errorMessage = `Stack Overflow at 0x${pc.toString(16).toUpperCase()}: SP exhausted 64-byte stack limit`;
+                    this.bus.emit('error', { type: 'stack', message: this._errorMessage });
+                    break;
+                }
                 this.registers.sp = sp;
                 this.memory.write32(sp, val);
                 text = `PUSH R${rs}`;
@@ -1701,6 +1707,12 @@ class CPU {
             case OP.PUSH_I: {
                 const imm = this.memory.peek32(pc + 1);
                 const sp = this.registers.sp - WORD_SIZE;
+                if (sp < (STACK_START - 63)) {
+                    this._error = true;
+                    this._errorMessage = `Stack Overflow at 0x${pc.toString(16).toUpperCase()}: SP exhausted 64-byte stack limit`;
+                    this.bus.emit('error', { type: 'stack', message: this._errorMessage });
+                    break;
+                }
                 this.registers.sp = sp;
                 this.memory.write32(sp, imm);
                 text = `PUSH ${imm}`;
@@ -1713,6 +1725,12 @@ class CPU {
             case OP.POP: {
                 const rd = this.memory.peek(pc + 1) & 0x07;
                 const sp = this.registers.sp;
+                if (sp > STACK_START) {
+                    this._error = true;
+                    this._errorMessage = `Stack Underflow at 0x${pc.toString(16).toUpperCase()}: SP exceeded stack base (0x${STACK_START.toString(16).toUpperCase()})`;
+                    this.bus.emit('error', { type: 'stack', message: this._errorMessage });
+                    break;
+                }
                 const val = this.memory.read32(sp);
                 this.registers.set(rd, val);
                 this.registers.sp = sp + WORD_SIZE;
@@ -1729,6 +1747,12 @@ class CPU {
                 const addr = this.memory.peek16(pc + 1);
                 const returnAddr = pc + 3;
                 const sp = this.registers.sp - WORD_SIZE;
+                if (sp < (STACK_START - 63)) {
+                    this._error = true;
+                    this._errorMessage = `Stack Overflow at 0x${pc.toString(16).toUpperCase()}: SP exhausted 64-byte stack limit`;
+                    this.bus.emit('error', { type: 'stack', message: this._errorMessage });
+                    break;
+                }
                 this.registers.sp = sp;
                 this.memory.write32(sp, returnAddr);
                 this.registers.pc = addr;
@@ -1740,6 +1764,12 @@ class CPU {
 
             case OP.RET: {
                 const sp = this.registers.sp;
+                if (sp > STACK_START) {
+                    this._error = true;
+                    this._errorMessage = `Stack Underflow at 0x${pc.toString(16).toUpperCase()}: SP exceeded stack base (0x${STACK_START.toString(16).toUpperCase()})`;
+                    this.bus.emit('error', { type: 'stack', message: this._errorMessage });
+                    break;
+                }
                 const returnAddr = this.memory.read32(sp);
                 this.registers.sp = sp + WORD_SIZE;
                 this.registers.pc = returnAddr & 0xFFFF;

@@ -1793,20 +1793,24 @@ class Preprocessor {
         // 1. Process #define MACRO VALUE
         text = text.replace(/^#\s*define\s+([A-Za-z_]\w*)\s+(.+)$/gm, (match, name, value) => {
             macros[name] = value.trim();
-            return `/* #define ${name} ${value.trim()} */`;
+            return `// [macro: ${name} = ${value.trim()}]`;
         });
 
-        // Substitute macro definitions in code
+        // Substitute macro definitions in code (word boundary matching)
         for (const [name, value] of Object.entries(macros)) {
             const regex = new RegExp(`\\b${name}\\b`, 'g');
-            text = text.replace(regex, value);
+            text = text.replace(regex, (match, offset) => {
+                const prev = text.substring(Math.max(0, offset - 15), offset);
+                if (prev.includes('[macro:')) return match;
+                return value;
+            });
         }
 
         // 2. Expand #include <stdio.h>
         text = text.replace(/^#\s*include\s+<stdio\.h>/gm, () => {
             expandedHeaders.push('stdio.h');
             return `// --- Began <stdio.h> ---
-int printf(const char *format, ...);
+// [Standard I/O: printf() built-in]
 // --- Ended <stdio.h> ---`;
         });
 
@@ -2088,7 +2092,7 @@ class Compiler {
 
         // Stage 1: Lexing
         this.bus.emit('compileStage', { stage: 'lexer', status: 'running' });
-        this.lexer = new Lexer(source);
+        this.lexer = new Lexer(this.preprocessedCode);
         const lexResult = this.lexer.tokenize();
         this.tokens = lexResult.tokens;
         this.lexerSteps = lexResult.steps;

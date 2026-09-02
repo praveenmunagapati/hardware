@@ -920,12 +920,55 @@ select:focus { border-color: var(--accent-amber); }
 
 .asm-line {
     display: flex;
-    gap: var(--space-xl);
+    gap: var(--space-lg);
     padding: 4px var(--space-sm);
     border-radius: var(--radius-sm);
     transition: background var(--transition-fast);
-    align-items: baseline;
+    align-items: center;
     font-size: 13px;
+    position: relative;
+}
+
+.asm-bp {
+    width: 14px;
+    height: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    user-select: none;
+    margin-right: 2px;
+}
+
+.asm-bp::after {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: transparent;
+    transition: all var(--transition-fast);
+}
+
+.asm-line:hover .asm-bp::after {
+    background: rgba(240, 80, 80, 0.3);
+}
+
+.asm-line.has-breakpoint .asm-bp::after {
+    background: var(--accent-red);
+    box-shadow: 0 0 8px rgba(240, 80, 80, 0.8);
+    transform: scale(1.15);
+}
+
+.asm-line.breakpoint-hit {
+    background: rgba(240, 80, 80, 0.18) !important;
+    border-left: 3px solid var(--accent-red) !important;
+    animation: bp-flash 0.8s ease-in-out;
+}
+
+@keyframes bp-flash {
+    0%, 100% { background: rgba(240, 80, 80, 0.18); }
+    50% { background: rgba(240, 80, 80, 0.4); }
 }
 
 .asm-line:hover {
@@ -941,7 +984,7 @@ select:focus { border-color: var(--accent-amber); }
 
 .asm-addr {
     color: var(--text-muted);
-    min-width: 40px;
+    min-width: 44px;
     font-size: 11px;
 }
 
