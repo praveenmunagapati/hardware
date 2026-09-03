@@ -119,6 +119,219 @@
     --shadow-glow: 0 0 20px rgba(217, 119, 6, 0.08);
 }
 
+/* ────────────────────────────────────────────────────────────────────────────
+   Retro Terminal: Green Phosphor CRT (VT100 / Matrix Aesthetic)
+   ──────────────────────────────────────────────────────────────────────────── */
+
+[data-theme="crt-green"] {
+    /* Foundation — Deep Obsidian & Matrix Green */
+    --bg-primary:    #030905;
+    --bg-secondary:  #06150b;
+    --bg-tertiary:   #0a2212;
+    --bg-panel:      #051109;
+    --bg-input:      #020603;
+
+    /* Borders — Phosphor Traces */
+    --border-subtle: #0f331b;
+    --border-medium: #18522b;
+    --border-bright: #288c49;
+
+    /* Text — Vibrant Phosphor Green Bloom */
+    --text-primary:  #33ff66;
+    --text-secondary:#22c54f;
+    --text-muted:    #12632b;
+    --text-bright:   #b8ffd1;
+
+    /* Accents */
+    --accent-amber:  #ffb000;
+    --accent-amber-dim: #cc8d00;
+    --accent-cyan:   #33ffcc;
+    --accent-green:  #33ff66;
+    --accent-magenta:#ff44aa;
+    --accent-red:    #ff3b3b;
+    --accent-blue:   #38bdf8;
+    --accent-purple: #a855f7;
+
+    /* Phosphor Glows & Shadows */
+    --glow-amber:    rgba(255, 176, 0, 0.25);
+    --glow-cyan:     rgba(51, 255, 204, 0.25);
+    --glow-green:    rgba(51, 255, 102, 0.35);
+    --glow-red:      rgba(255, 59, 59, 0.25);
+
+    --shadow-sm:  0 1px 4px rgba(0, 0, 0, 0.6);
+    --shadow-md:  0 4px 16px rgba(0, 0, 0, 0.8);
+    --shadow-lg:  0 8px 32px rgba(0, 0, 0, 0.9);
+    --shadow-glow: 0 0 24px rgba(51, 255, 102, 0.2);
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   Retro Terminal: Amber Phosphor CRT (IBM 3161 Aesthetic)
+   ──────────────────────────────────────────────────────────────────────────── */
+
+[data-theme="crt-amber"] {
+    /* Foundation — Deep Coal & Warm Amber */
+    --bg-primary:    #0a0601;
+    --bg-secondary:  #140b03;
+    --bg-tertiary:   #221305;
+    --bg-panel:      #100902;
+    --bg-input:      #060401;
+
+    /* Borders — Amber Traces */
+    --border-subtle: #381f08;
+    --border-medium: #59320d;
+    --border-bright: #965416;
+
+    /* Text — Luminous Monochrome Amber */
+    --text-primary:  #ffb000;
+    --text-secondary:#d49200;
+    --text-muted:    #6e4c00;
+    --text-bright:   #ffebb8;
+
+    /* Accents */
+    --accent-amber:  #ffb000;
+    --accent-amber-dim: #c78800;
+    --accent-cyan:   #ffd166;
+    --accent-green:  #ffc033;
+    --accent-magenta:#ff5588;
+    --accent-red:    #ff4444;
+    --accent-blue:   #ffa033;
+    --accent-purple: #d97706;
+
+    /* Phosphor Glows & Shadows */
+    --glow-amber:    rgba(255, 176, 0, 0.35);
+    --glow-cyan:     rgba(255, 209, 102, 0.25);
+    --glow-green:    rgba(255, 192, 51, 0.3);
+    --glow-red:      rgba(255, 68, 68, 0.25);
+
+    --shadow-sm:  0 1px 4px rgba(0, 0, 0, 0.6);
+    --shadow-md:  0 4px 16px rgba(0, 0, 0, 0.8);
+    --shadow-lg:  0 8px 32px rgba(0, 0, 0, 0.9);
+    --shadow-glow: 0 0 24px rgba(255, 176, 0, 0.2);
+}
+
+/* ────────────────────────────────────────────────────────────────────────────
+   CRT Overlay, Scanlines & Screen Curvature
+   ──────────────────────────────────────────────────────────────────────────── */
+
+.crt-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    pointer-events: none;
+    z-index: 9999;
+    display: none;
+}
+
+[data-crt-effects="true"] .crt-overlay {
+    display: block;
+    background: 
+        /* Scanline raster grid */
+        linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.3) 50%),
+        linear-gradient(90deg, rgba(255, 0, 0, 0.02), rgba(0, 255, 0, 0.01), rgba(0, 0, 255, 0.02)),
+        /* Vignette curvature shadow */
+        radial-gradient(circle at center, transparent 65%, rgba(0, 0, 0, 0.55) 100%);
+    background-size: 100% 3px, 6px 100%, 100% 100%;
+}
+
+/* Phosphor Bloom when CRT FX is active */
+[data-theme="crt-green"][data-crt-effects="true"] body {
+    text-shadow: 0 0 4px rgba(51, 255, 102, 0.45);
+}
+
+[data-theme="crt-amber"][data-crt-effects="true"] body {
+    text-shadow: 0 0 4px rgba(255, 176, 0, 0.45);
+}
+
+[data-theme="crt-green"] .brand-name,
+[data-theme="crt-green"] .stage-title,
+[data-theme="crt-green"] .reg-value,
+[data-theme="crt-green"] .cycle-value {
+    text-shadow: 0 0 8px rgba(51, 255, 102, 0.6);
+}
+
+[data-theme="crt-amber"] .brand-name,
+[data-theme="crt-amber"] .stage-title,
+[data-theme="crt-amber"] .reg-value,
+[data-theme="crt-amber"] .cycle-value {
+    text-shadow: 0 0 8px rgba(255, 176, 0, 0.6);
+}
+
+/* CRT Screen Power Flicker (ultra subtle) */
+@keyframes crt-flicker {
+    0% { opacity: 0.995; }
+    50% { opacity: 1; }
+    100% { opacity: 0.998; }
+}
+
+[data-crt-effects="true"] #app {
+    animation: crt-flicker 0.12s infinite;
+}
+
+/* Terminal blinking cursor in console & editor */
+.terminal-cursor {
+    display: inline-block;
+    width: 8px;
+    height: 15px;
+    background: var(--text-primary);
+    vertical-align: text-bottom;
+    animation: term-blink 1s step-end infinite;
+}
+
+@keyframes term-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+
+/* Theme Control Selector */
+.theme-control {
+    display: flex;
+    align-items: center;
+    gap: var(--space-xs);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-secondary);
+}
+
+.theme-control label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+}
+
+.theme-control select {
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-medium);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    padding: 5px 8px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    cursor: pointer;
+    outline: none;
+}
+
+.theme-control select:focus {
+    border-color: var(--accent-amber);
+}
+
+#btn-crt-toggle {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.5px;
+    border-color: var(--accent-green);
+    color: var(--accent-green);
+    background: rgba(51, 255, 102, 0.08);
+}
+
+#btn-crt-toggle.crt-off {
+    border-color: var(--border-medium);
+    color: var(--text-muted);
+    background: var(--bg-tertiary);
+}
+
 
 /* ────────────────────────────────────────────────────────────────────────────
    Global Reset & Base

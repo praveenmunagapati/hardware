@@ -16,6 +16,7 @@
 </head>
 
 <body>
+    <div class="crt-overlay" id="crt-overlay" aria-hidden="true"></div>
     <div id="app">
         <!-- ═══════════════════════════════════════════════════════════
              Sticky Header / Toolbar
@@ -62,8 +63,18 @@
                 <select id="example-select"></select>
             </div>
 
-            <button id="btn-theme-toggle" class="btn" title="Toggle Light / Dark Theme">
-                ☀️ Light Mode
+            <div class="theme-control">
+                <label for="theme-select">Phosphor</label>
+                <select id="theme-select" title="Terminal Color & Phosphor Theme">
+                    <option value="crt-green">🟢 Green Phosphor</option>
+                    <option value="crt-amber">🟠 Amber Phosphor</option>
+                    <option value="dark">🌌 Cyber Dark</option>
+                    <option value="light">☀️ Paper Light</option>
+                </select>
+            </div>
+
+            <button id="btn-crt-toggle" class="btn" title="Toggle CRT Scanlines & Phosphor Bloom">
+                📺 CRT FX: ON
             </button>
         </header>
 

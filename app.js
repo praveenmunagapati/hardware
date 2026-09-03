@@ -480,9 +480,9 @@ int main() {
             setReg(regEls[i], cpu.registers.get(i), 8);
         }
         setReg(regPC, cpu.registers.pc, 3);
-        setReg(regSP, cpu.registers.sp, 3);
-
         if (cycleCount) cycleCount.textContent = cpu.cycleCount;
+        const badgeCyc = $('#badge-cycles');
+        if (badgeCyc) badgeCyc.textContent = `${cpu.cycleCount} cyc`;
     }
 
     function updateFlags() {
@@ -1096,6 +1096,11 @@ int main() {
             }
 
             updateStatusBar('Compiled', 'success');
+            const badgeTok = $('#badge-tokens');
+            if (badgeTok && result.tokens) {
+                const count = result.tokens.filter(tok => tok.type !== 'EOF').length;
+                badgeTok.textContent = `${count} tok`;
+            }
         } else {
             isCompiled = false;
             for (const err of result.errors) {
@@ -1114,6 +1119,11 @@ int main() {
         if (cpu.halted) {
             appendConsole('Program halted. Reset to run again.', 'info');
             return;
+        }
+
+        const activeTab = document.body.dataset.activeTab;
+        if (activeTab === 'pane-source' || activeTab === 'pane-compiler') {
+            switchTab('pane-studio');
         }
 
         cpu.step();
@@ -1143,6 +1153,11 @@ int main() {
             return;
         }
 
+        const activeTab = document.body.dataset.activeTab;
+        if (activeTab === 'pane-source' || activeTab === 'pane-compiler') {
+            switchTab('pane-studio');
+        }
+
         updateStatusBar('Running...', 'running');
         setButtonStates(true);
         cpu.speed = getSpeedValue();
@@ -1158,6 +1173,11 @@ int main() {
         if (cpu.halted) {
             appendConsole('Program halted. Reset to run again.', 'info');
             return;
+        }
+
+        const activeTab = document.body.dataset.activeTab;
+        if (activeTab === 'pane-source' || activeTab === 'pane-compiler') {
+            switchTab('pane-studio');
         }
 
         updateStatusBar('Running (fast)...', 'running');
@@ -1317,29 +1337,131 @@ int main() {
     }
 
     // ════════════════════════════════════════════════════════════════════
+    // Tab Navigation & Workspace Layout
+    // ════════════════════════════════════════════════════════════════════
+
+    function switchTab(targetId) {
+        const tabBtns = $$('.tab-btn');
+        const tabPanes = $$('.tab-pane');
+
+        tabBtns.forEach(btn => {
+            const isMatch = btn.dataset.tab === targetId;
+            btn.classList.toggle('active', isMatch);
+            btn.setAttribute('aria-selected', isMatch ? 'true' : 'false');
+        });
+
+        document.body.dataset.activeTab = targetId;
+
+        if (targetId === 'tab-pipeline') {
+            tabPanes.forEach(p => p.classList.add('active'));
+            updateStatusBar('Viewing Full Pipeline Flow (All 13 Stages)', 'idle');
+        } else {
+            tabPanes.forEach(p => {
+                const isMatch = p.id === targetId;
+                p.classList.toggle('active', isMatch);
+            });
+            const tabName = $(`[data-tab="${targetId}"] .tab-label`)?.textContent || targetId;
+            updateStatusBar(`Switched to ${tabName}`, 'idle');
+        }
+
+        localStorage.setItem('minicpu_active_tab', targetId);
+    }
+
+    function initTabNavigation() {
+        const tabBtns = $$('.tab-btn');
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                switchTab(btn.dataset.tab);
+            });
+        });
+
+        // Compiler subnav buttons
+        const subnavBtns = $$('.compiler-subnav .subnav-btn');
+        const compilerStages = $$('#pane-compiler .stage');
+        const compilerConnectors = $$('#pane-compiler .pipeline-connector');
+
+        subnavBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                subnavBtns.forEach(b => b.classList.toggle('active', b === btn));
+                const targetStage = btn.dataset.stage;
+                if (targetStage === 'all') {
+                    compilerStages.forEach(s => s.style.display = 'block');
+                    compilerConnectors.forEach(c => c.style.display = 'flex');
+                } else {
+                    compilerStages.forEach(s => {
+                        s.style.display = (s.id === targetStage) ? 'block' : 'none';
+                    });
+                    compilerConnectors.forEach(c => c.style.display = 'none');
+                }
+            });
+        });
+
+        // Restore saved tab or default to pane-studio
+        const savedTab = localStorage.getItem('minicpu_active_tab') || 'pane-studio';
+        switchTab(savedTab);
+
+        // Keyboard navigation (Alt+1..5)
+        document.addEventListener('keydown', (e) => {
+            if (e.altKey && !e.ctrlKey && !e.shiftKey) {
+                const tabMap = {
+                    '1': 'pane-studio',
+                    '2': 'pane-source',
+                    '3': 'pane-compiler',
+                    '4': 'pane-memory',
+                    '5': 'tab-pipeline'
+                };
+                if (tabMap[e.key]) {
+                    e.preventDefault();
+                    switchTab(tabMap[e.key]);
+                }
+            }
+        });
+    }
+
+    // ════════════════════════════════════════════════════════════════════
     // Event Handlers
     // ════════════════════════════════════════════════════════════════════
 
     function attachEventHandlers() {
-        // Theme Toggle Handler
-        const btnThemeToggle = $('#btn-theme-toggle');
-        let currentTheme = localStorage.getItem('minicpu_theme') || 'dark';
+        // ─── Retro Terminal Phosphor CRT & Theme Management ───────────
+        const themeSelect = $('#theme-select');
+        const btnCrtToggle = $('#btn-crt-toggle');
+
+        let currentTheme = localStorage.getItem('minicpu_theme') || 'crt-green';
+        let crtFxEnabled = localStorage.getItem('minicpu_crt_fx') !== 'false';
 
         function applyTheme(theme) {
             currentTheme = theme;
             document.documentElement.setAttribute('data-theme', theme);
             localStorage.setItem('minicpu_theme', theme);
-            if (btnThemeToggle) {
-                btnThemeToggle.innerHTML = theme === 'light' ? '🌙 Dark Mode' : '☀️ Light Mode';
+            if (themeSelect) themeSelect.value = theme;
+        }
+
+        function setCrtEffects(enabled) {
+            crtFxEnabled = enabled;
+            document.documentElement.setAttribute('data-crt-effects', enabled ? 'true' : 'false');
+            localStorage.setItem('minicpu_crt_fx', enabled ? 'true' : 'false');
+            if (btnCrtToggle) {
+                btnCrtToggle.textContent = enabled ? '📺 CRT FX: ON' : '📺 CRT FX: OFF';
+                btnCrtToggle.classList.toggle('crt-off', !enabled);
             }
         }
 
-        if (btnThemeToggle) {
-            btnThemeToggle.addEventListener('click', () => {
-                applyTheme(currentTheme === 'light' ? 'dark' : 'light');
+        if (themeSelect) {
+            themeSelect.addEventListener('change', () => {
+                applyTheme(themeSelect.value);
             });
         }
+
+        if (btnCrtToggle) {
+            btnCrtToggle.addEventListener('click', () => {
+                setCrtEffects(!crtFxEnabled);
+            });
+        }
+
         applyTheme(currentTheme);
+        setCrtEffects(crtFxEnabled);
+        initTabNavigation();
 
         // Multi-instance buttons (Header & Stage 6 Assembly bar)
         $$('.btn-compile-action').forEach(el => el.addEventListener('click', doCompile));
